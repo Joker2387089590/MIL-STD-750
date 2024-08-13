@@ -1,0 +1,113 @@
+C51 COMPILER V9.60.7.0   MAIN                                                              08/13/2024 22:46:37 PAGE 1   
+
+
+C51 COMPILER V9.60.7.0, COMPILATION OF MODULE MAIN
+OBJECT MODULE PLACED IN main.OBJ
+COMPILER INVOKED BY: C:\Keil_v5\C51\BIN\C51.EXE main.c OPTIMIZE(8,SPEED) BROWSE DEBUG OBJECTEXTEND TABS(2)
+
+line level    source
+
+   1          #include "reg52.h"
+   2          
+   3          unsigned char state;
+   4          unsigned char buf[4];
+   5          
+   6          void uart_init()
+   7          {
+   8   1          SCON=0X50;      //设置为工作方式1
+   9   1          TMOD=0X20;      //设置计数器工作方式2
+  10   1          PCON=0X80;      //波特率加倍
+  11   1          TH1=0XF3;       //计数器初始值设置，注意波特率是4800的
+  12   1          TL1=0XF3;
+  13   1          ES=1;           //打开接收中断
+  14   1          EA=1;           //打开总中断
+  15   1          TR1=1;          //打开计数器
+  16   1          SBUF = 0x00;
+  17   1      }
+  18          
+  19          void resetBuf()
+  20          {
+  21   1          state = 0xFF;
+  22   1          buf[0] = 0;
+  23   1          buf[1] = 0;
+  24   1          buf[2] = 0;
+  25   1          buf[3] = 0;
+  26   1      }
+  27          
+  28          void applyBuf()
+  29          {
+  30   1          P0 = buf[0];
+  31   1          P1 = buf[1];
+  32   1          P2 = buf[2];
+  33   1          P3 = buf[3];
+  34   1      }
+  35          
+  36          unsigned char readByte()
+  37          {
+  38   1        unsigned char sbuf;
+  39   1        RI = 0; // 清除接收中断标志位
+  40   1        
+  41   1        sbuf = SBUF;
+  42   1        switch(state)
+  43   1        {
+  44   2        case 0xFF:
+  45   2            if(sbuf != 0xAA) break;
+  46   2            state = 0;
+  47   2            break;
+  48   2        case 0:
+  49   2        case 1:
+  50   2        case 2:
+  51   2        case 3:
+  52   2            buf[state] = sbuf;
+  53   2            SBUF = buf[state];
+  54   2            state += 1;
+  55   2            break;
+C51 COMPILER V9.60.7.0   MAIN                                                              08/13/2024 22:46:37 PAGE 2   
+
+  56   2        case 4:
+  57   2            if(sbuf == 0x55) applyBuf();
+  58   2        default:
+  59   2            resetBuf();
+  60   2            break;
+  61   2        }
+  62   1        return sbuf;
+  63   1      }
+  64          
+  65          void writeByte(unsigned char sbuf)
+  66          {
+  67   1        SBUF = sbuf;
+  68   1        TI = 1;
+  69   1      }
+  70          
+  71          void uart() interrupt 4 //串口通信中断函数
+  72          {
+  73   1          unsigned char cache;
+  74   1          if(TI) TI = 0; // 清除发送中断标志位
+  75   1          if(RI)
+  76   1          {
+  77   2              cache = readByte(); // 处理接收到的数据
+  78   2              writeByte(cache); // 回传数据
+  79   2          }
+  80   1      }
+  81          
+  82          void main()
+  83          {
+  84   1          uart_init();
+  85   1          resetBuf();
+  86   1          while(1);
+  87   1      }
+  88          
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    158    ----
+   CONSTANT SIZE    =   ----    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =      5       1
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)
