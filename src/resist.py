@@ -31,3 +31,6 @@ class Resist(QObject):
             print('[resist]', f'invalid states:', states, file=sys.stderr)
             return
         self.port.write(data)
+
+    def set_value(self, res: float):
+        ...

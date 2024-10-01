@@ -1,124 +1,159 @@
 import sys
-import time
-from PySide6 import QtWidgets
-from PySide6.QtCore import Slot
-from .resist import *
-from .dmm import Meter
-from .power import Power
+from PySide6 import QtCore, QtWidgets, QtCharts, QtAsyncio
+from PySide6.QtCore import Slot, QThread, QMetaObject, Qt
+from PySide6.QtSerialPort import QSerialPortInfo
+from .context import Argument, Device, Context
 from .main_ui import Ui_MainWindow
+
+class Chart(QtCharts.QChart):
+    def __init__(self):
+        super().__init__()
+        self.ax = QtCharts.QValueAxis()
+        self.ay = QtCharts.QValueAxis()
+        self.addAxis(self.ax, Qt.AlignmentFlag.AlignBottom)
+        self.addAxis(self.ay, Qt.AlignmentFlag.AlignLeft)
+
+        self.current_vb_trace: QtCharts.QLineSeries | None = None
+
+    @Slot()
+    def make_new_vb_trace(self, vb: float):
+        line_vce_ic = QtCharts.QLineSeries(self)
+        line_vce_ic.setName(f'Vb = {vb:.3f}V')
+        line_vce_ic.setPointLabelsVisible(True)
+        self.addSeries(line_vce_ic)
+        line_vce_ic.attachAxis(self.ax)
+        line_vce_ic.attachAxis(self.ay)
+        self.current_vb_trace = line_vce_ic
+    
+    @Slot()
+    def add_test_point(self, Vb: float, Vc: float, Vce: float, Ic: float):
+        self.current_vb_trace.append(Vce, Ic)
+        count = self.current_vb_trace.count()
+        print(f'[{count}] Vb, Vc, Vce, Ic = {Vb}, {Vc}, {Vce}, {Ic}')
+
+class AsyncThread(QThread):
+    def run(self):
+        async def nothing(): pass
+        QtAsyncio.run(nothing(), keep_running=True, quit_qapp=False, debug=True)
 
 class MainWindow(QtWidgets.QMainWindow):
     def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
         super().__init__(parent)
+        self.device: Device | None = None
+        self.io_thread = AsyncThread(self)
         self.setup_ui(Ui_MainWindow())
-        self.resist: Resist = None
-        self.dmm: Meter = None
-        self.power_vc: Power = None
-        self.power_vb: Power = None
+        QtCore.QTimer.singleShot(0, self.io_thread, self.io_thread.start)
 
     def setup_ui(self, ui: Ui_MainWindow):
         self.ui = ui
         ui.setupUi(self)
 
         self.update_serial_info()
-        self.ui.Rset.addItems([f'P0{i}' for i in range(8)])
 
-        ui.btnDebug.clicked.connect(self.debug)
-        ui.btnConnect.clicked.connect(self.连接设备)
-        ui.btnDisconnect.clicked.connect(self.断开设备)
-        ui.btnRset.clicked.connect(self.设置电阻)
-        ui.btnPin.clicked.connect(self.设置引脚)
-        ui.btnVc.clicked.connect(self.设置Vc)
-        ui.btnVc.clicked.connect(self.设置Vb)
+        self.chart_vce_ic = Chart()
+        ui.chartView.setChart(self.chart_vce_ic)
 
-    @Slot()
-    def debug(self):
-        pass
+        ui.btnStart.clicked.connect(self.start_test)
+
+        ui.btnConnect.clicked.connect(self.connects)
+        ui.btnDisconnect.clicked.connect(self.disconnects)
+
+        self.target_series: QtCharts.QLineSeries | None = None
+        ui.Vce.editingFinished.connect(self.check_arguments)
+        ui.ic.editingFinished.connect(self.check_arguments)
+        ui.Pmax.editingFinished.connect(self.check_arguments)
+
+        self.check_arguments()
+
+    def check_arguments(self):
+        if self.target_series:
+            self.chart_vce_ic.removeSeries(self.target_series)
+            self.target_series = None
+
+        Vce = self.ui.Vce.value()
+        Ic = self.ui.ic.value()
+        Pmax = self.ui.Pmax.value()
+
+        if Pmax > Vce * Ic:
+            self.ui.Pmax.setStyleSheet('''
+                QDoubleSpinBox { border: 1px solid red; }
+            ''')
+            return
+        self.ui.Pmax.setStyleSheet('')
+
+        Vce_mid = Pmax / Ic
+        Ic_mid = Pmax / Vce
+
+        self.target_series = QtCharts.QLineSeries(self.chart_vce_ic)
+        self.target_series.append(0, Ic)
+        self.target_series.append(Vce_mid, Ic)
+        v = Vce_mid
+        while v < Vce:
+            self.target_series.append(v, Pmax / v)
+            v += 0.01
+        self.target_series.append(Vce, Ic_mid)
+        self.target_series.append(Vce, 0)
+
+        self.chart_vce_ic.addSeries(self.target_series)
+        self.target_series.attachAxis(self.chart_vce_ic.ax)
+        self.target_series.attachAxis(self.chart_vce_ic.ay)
+        self.chart_vce_ic.ax.setRange(0, Vce * 1.1)
+        self.chart_vce_ic.ay.setRange(0, Ic * 1.1)
 
     def update_serial_info(self):
         self.ui.port.clear()
         self.ports = QSerialPortInfo.availablePorts()
         self.ui.port.addItems([port.portName() for port in self.ports])
 
+    def exec(self):
+        if self.device is None: raise Exception('device is not connected')
+
     @Slot()
-    def 连接设备(self):
+    def connects(self):
         info = self.ports[self.ui.port.currentIndex()]
-        self.ui.wControl.setEnabled(True)
         self.ui.btnConnect.setEnabled(False)
         self.ui.btnDisconnect.setEnabled(True)
         try:
-            self.resist = Resist(info, self)
-            self.dmm = Meter(self.ui.dmm.text())
-            self.power_vc = Power(self.ui.powerVc.text())
-            self.power_vb = Power(self.ui.powerVb.text())
-
-            self.power_vc.set_current_protection(40 * 0.6) # 继电器
-
+            self.device = Device(
+                resist=info, 
+                dmm=self.ui.dmm.text(),
+                power_vb=self.ui.powerVb.text(),
+                power_vc=self.ui.powerVc.text()
+            )
+            self.device.moveToThread(self.io_thread)
         except Exception as e:
-            self.断开设备()
             print(e, file=sys.stderr)
-    
-    @Slot()
-    def 断开设备(self):
-        for dev in (self.resist, self.dmm, self.power_vc, self.power_vb):
-            if dev is not None:
-                dev.disconnects()
-        self.resist, self.dmm, self.power_vc, self.power_vb = (None,) * 4
 
-        self.ui.wControl.setDisabled(True)
+    @Slot()
+    def disconnects(self):
+        self.device.disconnects()
+        self.device = None
         self.ui.btnConnect.setDisabled(False)
         self.ui.btnDisconnect.setDisabled(True)
 
     @Slot()
-    def 设置电阻(self):
-        res = 1 << self.ui.Rset.currentIndex()
-        self.resist.write(f'{res:0>2X} {res:0>2X} FF FF')
+    def start_test(self):
+        arg = Argument(
+            self.ui.Vce.value(),
+            self.ui.ic.value(),
+            self.ui.Pmax.value(),
+            self.ui.maxVb.value(),
+            self.ui.maxVc.value(),
+        )
+        context = Context(arg, self.device)
+        self.ui.btnPause.clicked.connect(context.pause)
+        self.ui.btnStop.clicked.connect(context.stop)
+        context.vbStarted.connect(self.chart_vce_ic.make_new_vb_trace)
+        context.pointTested.connect(self.chart_vce_ic.add_test_point)
 
-    @Slot()
-    def 设置引脚(self):
-        self.resist.write(self.ui.pin.text())
-
-    @Slot()
-    def 设置Vb(self):
-        self.power_vb.set_voltage(self.ui.Vb.value())
-
-    @Slot()
-    def 设置Vc(self):
-        self.power_vc.set_voltage(self.ui.Vc.value())
-
-    def test(self, vc: float, vb: float):
-        self.power_vc.set_voltage(vc)
-        self.power_vb.set_voltage(vb)
-
-        self.power_vc.set_output_state(True)
-        self.power_vb.set_output_state(True)
-
-        try:
-            time.sleep(0.100)
-            self.dmm.set_function('DC')
-            value = self.dmm.read()
-        finally:
-            self.power_vc.set_output_state(False)
-            self.power_vb.set_output_state(False)
-        
-        return value
+        context.moveToThread(self.io_thread)
+        QtCore.QTimer.singleShot(0, context, lambda: context.run())
 
 
 
-    def 第一阶段(self):
-        Vc = 0.1
-        Vb = 0.1
-        while True:
-            Vce = self.test(Vc, Vb)
 
-
-        ...
-
-def main():
+if __name__ == '__main__':
     app = QtWidgets.QApplication()
     w = MainWindow()
     w.show()
-    return app.exec()
-
-if __name__ == '__main__':
-    exit(main())
+    QtAsyncio.run()
