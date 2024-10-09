@@ -1,6 +1,6 @@
 import sys
-from PySide6 import QtCore, QtWidgets, QtCharts, QtAsyncio
-from PySide6.QtCore import Slot, QThread, QMetaObject, Qt
+from PySide6 import QtCore, QtWidgets, QtCharts
+from PySide6.QtCore import Slot, QThread, Qt
 from PySide6.QtSerialPort import QSerialPortInfo
 from .context import Argument, Device, Context
 from .main_ui import Ui_MainWindow
@@ -8,7 +8,7 @@ from .main_ui import Ui_MainWindow
 class Chart(QtCharts.QChart):
     def __init__(self):
         super().__init__()
-        self.ax = QtCharts.QValueAxis()
+        self.ax = QtCharts.QLogValueAxis()
         self.ay = QtCharts.QValueAxis()
         self.addAxis(self.ax, Qt.AlignmentFlag.AlignBottom)
         self.addAxis(self.ay, Qt.AlignmentFlag.AlignLeft)
@@ -31,18 +31,13 @@ class Chart(QtCharts.QChart):
         count = self.current_vb_trace.count()
         print(f'[{count}] Vb, Vc, Vce, Ic = {Vb}, {Vc}, {Vce}, {Ic}')
 
-class AsyncThread(QThread):
-    def run(self):
-        async def nothing(): pass
-        QtAsyncio.run(nothing(), keep_running=True, quit_qapp=False, debug=True)
-
 class MainWindow(QtWidgets.QMainWindow):
     def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
         super().__init__(parent)
         self.device: Device | None = None
-        self.io_thread = AsyncThread(self)
+        self.io_thread = QThread(self)
         self.setup_ui(Ui_MainWindow())
-        QtCore.QTimer.singleShot(0, self.io_thread, self.io_thread.start)
+        self.io_thread.start()
 
     def setup_ui(self, ui: Ui_MainWindow):
         self.ui = ui
@@ -85,7 +80,7 @@ class MainWindow(QtWidgets.QMainWindow):
         Ic_mid = Pmax / Vce
 
         self.target_series = QtCharts.QLineSeries(self.chart_vce_ic)
-        self.target_series.append(0, Ic)
+        self.target_series.append(10 ** -2, Ic)
         self.target_series.append(Vce_mid, Ic)
         v = Vce_mid
         while v < Vce:
@@ -97,16 +92,13 @@ class MainWindow(QtWidgets.QMainWindow):
         self.chart_vce_ic.addSeries(self.target_series)
         self.target_series.attachAxis(self.chart_vce_ic.ax)
         self.target_series.attachAxis(self.chart_vce_ic.ay)
-        self.chart_vce_ic.ax.setRange(0, Vce * 1.1)
+        self.chart_vce_ic.ax.setRange(10 ** -2, Vce * 1.1)
         self.chart_vce_ic.ay.setRange(0, Ic * 1.1)
 
     def update_serial_info(self):
         self.ui.port.clear()
         self.ports = QSerialPortInfo.availablePorts()
         self.ui.port.addItems([port.portName() for port in self.ports])
-
-    def exec(self):
-        if self.device is None: raise Exception('device is not connected')
 
     @Slot()
     def connects(self):
@@ -147,13 +139,10 @@ class MainWindow(QtWidgets.QMainWindow):
         context.pointTested.connect(self.chart_vce_ic.add_test_point)
 
         context.moveToThread(self.io_thread)
-        QtCore.QTimer.singleShot(0, context, lambda: context.run())
-
-
-
+        QtCore.QTimer.singleShot(0, context, context.run)
 
 if __name__ == '__main__':
     app = QtWidgets.QApplication()
     w = MainWindow()
     w.show()
-    QtAsyncio.run()
+    exit(app.exec())

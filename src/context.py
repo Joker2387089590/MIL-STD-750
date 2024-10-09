@@ -1,8 +1,7 @@
-import asyncio, traceback, math
+import traceback, math
 from dataclasses import dataclass
 from contextlib import ExitStack
 from PySide6.QtCore import QObject, Signal, Slot
-from PySide6 import QtAsyncio
 from .resist import Resist
 from .dmm import Meter
 from .power import Power
@@ -66,21 +65,12 @@ class Context(QObject):
     @Slot()
     def run(self):
         try:
-            self.pause_event = asyncio.Event()
-            self.stop_event = asyncio.Event()
-            QtAsyncio.run(self._run(), keep_running=False, quit_qapp=False)
-            self.deleteLater()
-        except:
-            traceback.print_exc()
-
-    async def _run(self):
-        try:
             self.dev.power_vb.reconfig()
             self.dev.power_vc.reconfig()
             self.dev.dmm.reconfig()
 
             # await self.search_resist()
-            await self.fill_cache()
+            self.fill_cache()
         except KeyboardInterrupt:
             pass
         except:
@@ -88,7 +78,7 @@ class Context(QObject):
         finally:
             pass
 
-    async def search_resist(self):
+    def search_resist(self):
         Vc = self.arg.Vce * 0.50
         for ib in range(2, 8):
             Vb = self.arg.Vb_max * ib / 10
@@ -98,9 +88,13 @@ class Context(QObject):
                 if Vce > self.arg.Vce * 0.10: return
                 if Ic > self.arg.Ic * 0.5: return
 
-    async def fill_cache(self):
-        step_Vc = 10 ** (max(int(math.log(self.arg.Vce, 10)) - 1, -2))
-        step_Vb = 10 ** (max(int(math.log(self.arg.Vb_max, 10)) - 1, -2))
+    def fill_cache(self):
+        def calc_step(v: float):
+            exp = int(math.log(v, 10)) - 1
+            return 10 ** max(exp, -2)
+        step_Vc = calc_step(self.arg.Vce)
+        step_Vb = calc_step(self.arg.Vb_max)
+        
         Vb = step_Vb
         Vc = step_Vc
         while True:
@@ -114,10 +108,8 @@ class Context(QObject):
 
     @Slot()
     def pause(self):
-        if self.pause_event:
-            self.pause_event.set()
+        ...
 
     @Slot()
     def stop(self):
-        if self.stop_event:
-            self.stop_event.set()
+        ...
