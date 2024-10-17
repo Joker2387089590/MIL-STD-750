@@ -1,4 +1,4 @@
-import sys
+import sys, math
 from PySide6 import QtCore, QtWidgets, QtCharts
 from PySide6.QtCore import Slot, QThread, Qt
 from PySide6.QtSerialPort import QSerialPortInfo
@@ -9,10 +9,11 @@ class Chart(QtCharts.QChart):
     def __init__(self):
         super().__init__()
         self.ax = QtCharts.QLogValueAxis()
-        self.ay = QtCharts.QValueAxis()
+        self.ay = QtCharts.QLogValueAxis()
+        self.ax.setLabelFormat('%gA')
+        self.ay.setLabelFormat('%gV')
         self.addAxis(self.ax, Qt.AlignmentFlag.AlignBottom)
         self.addAxis(self.ay, Qt.AlignmentFlag.AlignLeft)
-
         self.current_vb_trace: QtCharts.QLineSeries | None = None
 
     @Slot()
@@ -80,20 +81,20 @@ class MainWindow(QtWidgets.QMainWindow):
         Ic_mid = Pmax / Vce
 
         self.target_series = QtCharts.QLineSeries(self.chart_vce_ic)
-        self.target_series.append(10 ** -2, Ic)
+        self.target_series.append(1e-6, Ic)
         self.target_series.append(Vce_mid, Ic)
         v = Vce_mid
         while v < Vce:
             self.target_series.append(v, Pmax / v)
             v += 0.01
         self.target_series.append(Vce, Ic_mid)
-        self.target_series.append(Vce, 0)
+        self.target_series.append(Vce, 1e-6)
 
         self.chart_vce_ic.addSeries(self.target_series)
         self.target_series.attachAxis(self.chart_vce_ic.ax)
         self.target_series.attachAxis(self.chart_vce_ic.ay)
-        self.chart_vce_ic.ax.setRange(10 ** -2, Vce * 1.1)
-        self.chart_vce_ic.ay.setRange(0, Ic * 1.1)
+        self.chart_vce_ic.ax.setRange(1e-6, Vce * 10)
+        self.chart_vce_ic.ay.setRange(1e-6, Ic * 10)
 
     def update_serial_info(self):
         self.ui.port.clear()

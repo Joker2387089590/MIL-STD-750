@@ -1,4 +1,4 @@
-import sys
+import sys, math
 from PySide6.QtCore import QObject, Slot
 from PySide6.QtSerialPort import QSerialPort, QSerialPortInfo
 
@@ -33,4 +33,10 @@ class Resist(QObject):
         self.port.write(data)
 
     def set_value(self, res: float):
-        ...
+        if res < 10e-2:
+            bits = 0b0000_0001
+        else:
+            exp = int(math.ceil(math.log(res)))
+            bits = (1 << (exp + 1)) & 0xFF
+        bits = ~bits & 0xFF
+        self.port.write(bytes([0xAA, bits, 0xFF, 0xFF, 0xFF, 0x55]))

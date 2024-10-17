@@ -1,7 +1,24 @@
 import pyvisa, time, re, math
+from typing import TypeVar
 from pyvisa.resources.tcpip import TCPIPInstrument
 from pyvisa.constants import ResourceAttribute
 
+class DCI:
+    def __init__(self, instr: TCPIPInstrument): ...
+    def measure(self) -> float: ...
+
+class DCV:
+    def __init__(self, instr: TCPIPInstrument): ...
+    def measure(self) -> float: ...
+
+class RearChannel:
+    def __init__(self, instr: TCPIPInstrument, channel: int):
+        pass
+
+    def measure(): ...
+
+_M = TypeVar('_M')
+   
 class Meter:
     def __init__(self, ip: str = '192.168.31.129'):
         rm = pyvisa.ResourceManager()
@@ -18,6 +35,7 @@ class Meter:
             'SAMPle:COUNt 1',
             'VOLTage:NPLC 10',
             'CURRent:NPLC 10',
+            
         ]
         for cmd in cmds:
             self.instr.write(cmd)

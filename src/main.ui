@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1012</width>
-    <height>698</height>
+    <width>1035</width>
+    <height>658</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -19,6 +19,10 @@
 	background-color: #305496;
 	padding: 5px;
 	font-size: 14pt;
+}
+QLabel[objectName*=&quot;h2&quot;] {
+	padding: 5px;
+	font-size: 12pt;
 }</string>
   </property>
   <widget class="QWidget" name="centralwidget">
@@ -113,12 +117,12 @@
           <item row="3" column="0">
            <widget class="QLabel" name="label_12">
             <property name="text">
-             <string>电源V&lt;sub&gt;b&lt;/sub&gt;</string>
+             <string>电源V&lt;sub&gt;e&lt;/sub&gt;</string>
             </property>
            </widget>
           </item>
           <item row="3" column="1">
-           <widget class="QLineEdit" name="powerVb">
+           <widget class="QLineEdit" name="powerVe">
             <property name="text">
              <string>192.168.31.208</string>
             </property>
@@ -135,6 +139,12 @@
         </item>
         <item>
          <layout class="QFormLayout" name="formLayout">
+          <property name="labelAlignment">
+           <set>Qt::AlignCenter</set>
+          </property>
+          <property name="formAlignment">
+           <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
+          </property>
           <item row="0" column="0" colspan="2">
            <widget class="QLabel" name="h1_1">
             <property name="text">
@@ -142,19 +152,14 @@
             </property>
            </widget>
           </item>
-          <item row="1" column="0">
+          <item row="2" column="0">
            <widget class="QLabel" name="h2_2">
-            <property name="font">
-             <font>
-              <pointsize>12</pointsize>
-             </font>
-            </property>
             <property name="text">
              <string>V&lt;sub&gt;ce&lt;/sub&gt;</string>
             </property>
            </widget>
           </item>
-          <item row="1" column="1">
+          <item row="2" column="1">
            <widget class="QDoubleSpinBox" name="Vce">
             <property name="font">
              <font>
@@ -171,23 +176,18 @@
              <double>10000000.000000000000000</double>
             </property>
             <property name="value">
-             <double>3.000000000000000</double>
+             <double>1.000000000000000</double>
             </property>
            </widget>
           </item>
-          <item row="2" column="0">
+          <item row="3" column="0">
            <widget class="QLabel" name="h2_4">
-            <property name="font">
-             <font>
-              <pointsize>12</pointsize>
-             </font>
-            </property>
             <property name="text">
              <string>I&lt;sub&gt;C&lt;/sub&gt;</string>
             </property>
            </widget>
           </item>
-          <item row="2" column="1">
+          <item row="3" column="1">
            <widget class="QDoubleSpinBox" name="ic">
             <property name="font">
              <font>
@@ -195,7 +195,7 @@
              </font>
             </property>
             <property name="suffix">
-             <string>A</string>
+             <string>mA</string>
             </property>
             <property name="decimals">
              <number>3</number>
@@ -204,23 +204,18 @@
              <double>10000000.000000000000000</double>
             </property>
             <property name="value">
-             <double>0.020000000000000</double>
+             <double>1.000000000000000</double>
             </property>
            </widget>
           </item>
-          <item row="3" column="0">
+          <item row="4" column="0">
            <widget class="QLabel" name="h2_1">
-            <property name="font">
-             <font>
-              <pointsize>12</pointsize>
-             </font>
-            </property>
             <property name="text">
              <string>P&lt;sub&gt;max&lt;/sub&gt;</string>
             </property>
            </widget>
           </item>
-          <item row="3" column="1">
+          <item row="4" column="1">
            <widget class="QDoubleSpinBox" name="Pmax">
             <property name="font">
              <font>
@@ -237,31 +232,26 @@
              <double>10000000.000000000000000</double>
             </property>
             <property name="value">
-             <double>0.020000000000000</double>
+             <double>0.005000000000000</double>
             </property>
            </widget>
           </item>
-          <item row="4" column="0" colspan="2">
+          <item row="7" column="0" colspan="2">
            <widget class="QLabel" name="h1_2">
             <property name="text">
              <string>输出限制</string>
             </property>
            </widget>
           </item>
-          <item row="5" column="0">
+          <item row="9" column="0">
            <widget class="QLabel" name="h2_5">
-            <property name="font">
-             <font>
-              <pointsize>12</pointsize>
-             </font>
-            </property>
             <property name="text">
-             <string>V&lt;sub&gt;b&lt;/sub&gt;</string>
+             <string>V&lt;sub&gt;e&lt;/sub&gt;</string>
             </property>
            </widget>
           </item>
-          <item row="5" column="1">
-           <widget class="QDoubleSpinBox" name="maxVb">
+          <item row="9" column="1">
+           <widget class="QDoubleSpinBox" name="maxVe">
             <property name="font">
              <font>
               <pointsize>12</pointsize>
@@ -276,21 +266,19 @@
             <property name="maximum">
              <double>10000000.000000000000000</double>
             </property>
+            <property name="value">
+             <double>20.000000000000000</double>
+            </property>
            </widget>
           </item>
-          <item row="6" column="0">
+          <item row="8" column="0">
            <widget class="QLabel" name="h2_3">
-            <property name="font">
-             <font>
-              <pointsize>12</pointsize>
-             </font>
-            </property>
             <property name="text">
              <string>V&lt;sub&gt;c&lt;/sub&gt;</string>
             </property>
            </widget>
           </item>
-          <item row="6" column="1">
+          <item row="8" column="1">
            <widget class="QDoubleSpinBox" name="maxVc">
             <property name="font">
              <font>
@@ -305,6 +293,101 @@
             </property>
             <property name="maximum">
              <double>10000000.000000000000000</double>
+            </property>
+            <property name="value">
+             <double>20.000000000000000</double>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="0">
+           <widget class="QLabel" name="h2_6">
+            <property name="text">
+             <string>三极管类型</string>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="1">
+           <widget class="QComboBox" name="transistorType">
+            <property name="font">
+             <font>
+              <pointsize>12</pointsize>
+             </font>
+            </property>
+            <item>
+             <property name="text">
+              <string>NPN</string>
+             </property>
+            </item>
+            <item>
+             <property name="text">
+              <string>PNP</string>
+             </property>
+            </item>
+           </widget>
+          </item>
+          <item row="10" column="0" colspan="2">
+           <spacer name="verticalSpacer">
+            <property name="orientation">
+             <enum>Qt::Vertical</enum>
+            </property>
+            <property name="sizeHint" stdset="0">
+             <size>
+              <width>20</width>
+              <height>40</height>
+             </size>
+            </property>
+           </spacer>
+          </item>
+          <item row="6" column="0">
+           <widget class="QLabel" name="h2_7">
+            <property name="text">
+             <string>工作时间</string>
+            </property>
+           </widget>
+          </item>
+          <item row="6" column="1">
+           <widget class="QDoubleSpinBox" name="operateTime">
+            <property name="font">
+             <font>
+              <pointsize>12</pointsize>
+             </font>
+            </property>
+            <property name="suffix">
+             <string>s</string>
+            </property>
+            <property name="decimals">
+             <number>3</number>
+            </property>
+            <property name="maximum">
+             <double>10000000000000000000.000000000000000</double>
+            </property>
+            <property name="singleStep">
+             <double>0.010000000000000</double>
+            </property>
+            <property name="value">
+             <double>1.000000000000000</double>
+            </property>
+           </widget>
+          </item>
+          <item row="5" column="0">
+           <widget class="QLabel" name="h2_8">
+            <property name="text">
+             <string>h&lt;sub&gt;FE&lt;/sub&gt;</string>
+            </property>
+           </widget>
+          </item>
+          <item row="5" column="1">
+           <widget class="QSpinBox" name="Pmax_2">
+            <property name="font">
+             <font>
+              <pointsize>12</pointsize>
+             </font>
+            </property>
+            <property name="maximum">
+             <number>100000</number>
+            </property>
+            <property name="value">
+             <number>100</number>
             </property>
            </widget>
           </item>
