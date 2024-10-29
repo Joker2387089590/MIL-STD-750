@@ -5,16 +5,12 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Python 调试 chart",
-            "type": "debugpy",
-            "request": "launch",
-            "module": "src.chart"
-        },
-        {
             "name": "Python 调试 main",
             "type": "debugpy",
             "request": "launch",
-            "module": "src.main"
+            "module": "src.main",
+            "guiEventLoop": "qt",
+            "justMyCode": false,
         }
     ]
 }

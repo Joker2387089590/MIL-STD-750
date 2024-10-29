@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1035</width>
-    <height>658</height>
+    <width>1126</width>
+    <height>790</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -33,7 +33,7 @@ QLabel[objectName*=&quot;h2&quot;] {
        <enum>Qt::Horizontal</enum>
       </property>
       <widget class="QWidget" name="layoutWidget">
-       <layout class="QVBoxLayout" name="verticalLayout_2" stretch="0,0,1">
+       <layout class="QVBoxLayout" name="verticalLayout_2" stretch="0,0,0,1">
         <property name="leftMargin">
          <number>9</number>
         </property>
@@ -47,88 +47,107 @@ QLabel[objectName*=&quot;h2&quot;] {
          <number>9</number>
         </property>
         <item>
-         <layout class="QFormLayout" name="formLayout_2">
-          <item row="0" column="0" colspan="2">
-           <layout class="QHBoxLayout" name="horizontalLayout" stretch="1,0,0">
-            <item>
-             <widget class="QLabel" name="h1_3">
-              <property name="text">
-               <string>设备连接</string>
-              </property>
-             </widget>
-            </item>
-            <item>
-             <widget class="QPushButton" name="btnConnect">
-              <property name="text">
-               <string>连接</string>
-              </property>
-             </widget>
-            </item>
-            <item>
-             <widget class="QPushButton" name="btnDisconnect">
-              <property name="enabled">
-               <bool>false</bool>
-              </property>
-              <property name="text">
-               <string>断开</string>
-              </property>
-             </widget>
-            </item>
-           </layout>
-          </item>
-          <item row="1" column="0">
-           <widget class="QLabel" name="label">
+         <layout class="QHBoxLayout" name="horizontalLayout" stretch="1,0">
+          <item>
+           <widget class="QLabel" name="h1_3">
             <property name="text">
-             <string>万用表</string>
+             <string>设备连接</string>
             </property>
            </widget>
           </item>
-          <item row="1" column="1">
-           <widget class="QLineEdit" name="dmm">
-            <property name="text">
-             <string>192.168.31.129</string>
-            </property>
-           </widget>
-          </item>
-          <item row="2" column="0">
-           <widget class="QLabel" name="label_2">
-            <property name="text">
-             <string>电源V&lt;sub&gt;c&lt;/sub&gt;</string>
-            </property>
-           </widget>
-          </item>
-          <item row="2" column="1">
-           <widget class="QLineEdit" name="powerVc">
-            <property name="text">
-             <string>192.168.31.49</string>
-            </property>
-           </widget>
-          </item>
-          <item row="4" column="0">
-           <widget class="QLabel" name="label_3">
-            <property name="text">
-             <string>电阻箱COM口</string>
-            </property>
-           </widget>
-          </item>
-          <item row="4" column="1">
-           <widget class="QComboBox" name="port"/>
-          </item>
-          <item row="3" column="0">
-           <widget class="QLabel" name="label_12">
-            <property name="text">
-             <string>电源V&lt;sub&gt;e&lt;/sub&gt;</string>
-            </property>
-           </widget>
-          </item>
-          <item row="3" column="1">
-           <widget class="QLineEdit" name="powerVe">
-            <property name="text">
-             <string>192.168.31.208</string>
-            </property>
+          <item>
+           <widget class="QWidget" name="wConnect" native="true">
+            <layout class="QHBoxLayout" name="horizontalLayout_5">
+             <item>
+              <widget class="QPushButton" name="btnConnect">
+               <property name="text">
+                <string>连接</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QPushButton" name="btnDisconnect">
+               <property name="enabled">
+                <bool>false</bool>
+               </property>
+               <property name="text">
+                <string>断开</string>
+               </property>
+              </widget>
+             </item>
+            </layout>
            </widget>
           </item>
          </layout>
+        </item>
+        <item>
+         <widget class="QWidget" name="wDevices" native="true">
+          <layout class="QFormLayout" name="formLayout_2">
+           <item row="1" column="0">
+            <widget class="QLabel" name="label">
+             <property name="text">
+              <string>万用表</string>
+             </property>
+            </widget>
+           </item>
+           <item row="1" column="1">
+            <widget class="QLineEdit" name="dmm">
+             <property name="text">
+              <string>192.168.31.129</string>
+             </property>
+            </widget>
+           </item>
+           <item row="2" column="0">
+            <widget class="QLabel" name="label_2">
+             <property name="text">
+              <string>电源V&lt;sub&gt;c&lt;/sub&gt;</string>
+             </property>
+            </widget>
+           </item>
+           <item row="2" column="1">
+            <widget class="QLineEdit" name="powerVc">
+             <property name="text">
+              <string>192.168.31.49</string>
+             </property>
+            </widget>
+           </item>
+           <item row="4" column="0">
+            <widget class="QLabel" name="label_3">
+             <property name="text">
+              <string>电阻箱COM口</string>
+             </property>
+            </widget>
+           </item>
+           <item row="3" column="0">
+            <widget class="QLabel" name="label_12">
+             <property name="text">
+              <string>电源V&lt;sub&gt;e&lt;/sub&gt;</string>
+             </property>
+            </widget>
+           </item>
+           <item row="3" column="1">
+            <widget class="QLineEdit" name="powerVe">
+             <property name="text">
+              <string>192.168.31.208</string>
+             </property>
+            </widget>
+           </item>
+           <item row="4" column="1">
+            <layout class="QHBoxLayout" name="horizontalLayout_4" stretch="1,0">
+             <item>
+              <widget class="QComboBox" name="port"/>
+             </item>
+             <item>
+              <widget class="QPushButton" name="btnRefreshPort">
+               <property name="text">
+                <string>刷新</string>
+               </property>
+              </widget>
+             </item>
+            </layout>
+           </item>
+          </layout>
+         </widget>
         </item>
         <item>
          <widget class="Line" name="line">
@@ -223,7 +242,7 @@ QLabel[objectName*=&quot;h2&quot;] {
              </font>
             </property>
             <property name="suffix">
-             <string>W</string>
+             <string>mW</string>
             </property>
             <property name="decimals">
              <number>3</number>
@@ -232,7 +251,7 @@ QLabel[objectName*=&quot;h2&quot;] {
              <double>10000000.000000000000000</double>
             </property>
             <property name="value">
-             <double>0.005000000000000</double>
+             <double>0.500000000000000</double>
             </property>
            </widget>
           </item>
@@ -306,25 +325,6 @@ QLabel[objectName*=&quot;h2&quot;] {
             </property>
            </widget>
           </item>
-          <item row="1" column="1">
-           <widget class="QComboBox" name="transistorType">
-            <property name="font">
-             <font>
-              <pointsize>12</pointsize>
-             </font>
-            </property>
-            <item>
-             <property name="text">
-              <string>NPN</string>
-             </property>
-            </item>
-            <item>
-             <property name="text">
-              <string>PNP</string>
-             </property>
-            </item>
-           </widget>
-          </item>
           <item row="10" column="0" colspan="2">
            <spacer name="verticalSpacer">
             <property name="orientation">
@@ -377,7 +377,7 @@ QLabel[objectName*=&quot;h2&quot;] {
            </widget>
           </item>
           <item row="5" column="1">
-           <widget class="QSpinBox" name="Pmax_2">
+           <widget class="QSpinBox" name="hFE">
             <property name="font">
              <font>
               <pointsize>12</pointsize>
@@ -390,6 +390,30 @@ QLabel[objectName*=&quot;h2&quot;] {
              <number>100</number>
             </property>
            </widget>
+          </item>
+          <item row="1" column="1">
+           <layout class="QHBoxLayout" name="horizontalLayout_3">
+            <item>
+             <widget class="QRadioButton" name="radioButton_2">
+              <property name="text">
+               <string>NPN</string>
+              </property>
+              <property name="checked">
+               <bool>true</bool>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QRadioButton" name="radioButton">
+              <property name="enabled">
+               <bool>false</bool>
+              </property>
+              <property name="text">
+               <string>PNP</string>
+              </property>
+             </widget>
+            </item>
+           </layout>
           </item>
          </layout>
         </item>
@@ -410,29 +434,31 @@ QLabel[objectName*=&quot;h2&quot;] {
          <number>9</number>
         </property>
         <item>
-         <layout class="QHBoxLayout" name="horizontalLayout_2">
-          <item>
-           <widget class="QPushButton" name="btnStart">
-            <property name="text">
-             <string>开始</string>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="QPushButton" name="btnPause">
-            <property name="text">
-             <string>暂停</string>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="QPushButton" name="btnStop">
-            <property name="text">
-             <string>终止</string>
-            </property>
-           </widget>
-          </item>
-         </layout>
+         <widget class="QWidget" name="wControl" native="true">
+          <layout class="QHBoxLayout" name="horizontalLayout_2">
+           <item>
+            <widget class="QPushButton" name="btnStart">
+             <property name="text">
+              <string>开始</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QPushButton" name="btnPause">
+             <property name="text">
+              <string>暂停</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QPushButton" name="btnStop">
+             <property name="text">
+              <string>终止</string>
+             </property>
+            </widget>
+           </item>
+          </layout>
+         </widget>
         </item>
         <item>
          <widget class="QTabWidget" name="tabWidget">

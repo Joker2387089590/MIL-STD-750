@@ -1,31 +1,15 @@
 import pyvisa, time, re, math
-from typing import TypeVar
+from typing import Literal
 from pyvisa.resources.tcpip import TCPIPInstrument
 from pyvisa.constants import ResourceAttribute
 
-class DCI:
-    def __init__(self, instr: TCPIPInstrument): ...
-    def measure(self) -> float: ...
-
-class DCV:
-    def __init__(self, instr: TCPIPInstrument): ...
-    def measure(self) -> float: ...
-
-class RearChannel:
-    def __init__(self, instr: TCPIPInstrument, channel: int):
-        pass
-
-    def measure(): ...
-
-_M = TypeVar('_M')
-   
 class Meter:
-    def __init__(self, ip: str = '192.168.31.129'):
+    def __init__(self, ip: str):
         rm = pyvisa.ResourceManager()
         self.instr: TCPIPInstrument = rm.open_resource(f'TCPIP::{ip}::INSTR')
         self.instr.set_visa_attribute(ResourceAttribute.timeout_value, 1_000)
 
-    def reconfig(self):
+    def reconfig_function(self, func: Literal['VOLTage', 'CURRent']):
         self.instr.write('*RST')
         time.sleep(2.000)
 
@@ -35,19 +19,38 @@ class Meter:
             'SAMPle:COUNt 1',
             'VOLTage:NPLC 10',
             'CURRent:NPLC 10',
-            
+            f'FUNC "{func}"',
         ]
         for cmd in cmds:
             self.instr.write(cmd)
-            time.sleep(0.200)
+            time.sleep(0.100)
+
+    def reconfig(self):
+        self.instr.write('*RST')
+        time.sleep(2.000)
+
+        cmds = [
+            'ROUTe:SCAN ON',
+            'ROUTe:FUNCtion SCAN',
+            'ROUTe:COUNt 1',
+            'ROUTe:LIMIt:LOW 12',
+            'ROUTe:LIMIt:HIGH 13',
+            'ROUTe:CHANnel 12,ON,DCV,AUTO,FAST,1',
+            'ROUTe:CHANnel 13,ON,DCI,AUTO,FAST,1',
+        ]
+        for cmd in cmds:
+            self.instr.write(cmd)
+            time.sleep(0.100)
 
     def disconnects(self):
         self.instr.close()
 
-    def read(self, func: str) -> float:
+    data_points_pattern = re.compile(r'#(\d)(.*)')
+
+    def read_front(self) -> float:
         fail = time.time() + 10
         while time.time() < fail:
-            self.instr.write(f'{func};INIT')
+            self.instr.write(f'INIT')
             time.sleep(0.800)
 
             end = time.time() + 3
@@ -61,8 +64,7 @@ class Meter:
                     continue
 
                 result = self.instr.query('R?')
-                r1 = re.compile(r'#(\d)(.*)')
-                matches = re.match(r1, result)
+                matches = re.match(self.data_points_pattern, result)
                 assert matches
                 count = int(matches[1])
                 data = matches[2][count + 1:]
@@ -70,13 +72,25 @@ class Meter:
                 return float(datas[-1])
         assert False
         return math.nan
+
+    route_data_pattern = re.compile(r'12:(.*?) VDC,13:(.*?) ADC')
+
+    def read(self):
+        self.instr.query('ROUTe:DATA:REMOve?')
+
+        self.instr.write('ROUTe:STARt ON')
+        end = time.time() + 3.000
+        while True:
+            time.sleep(0.200)
+            if self.instr.query('ROUTe:STARt?').startswith('OFF'): break
+            if time.time() > end: raise Exception('扫描超时')
+        
+        data = self.instr.query('ROUTe:DATA:REMOve?')
+        matches = re.match(self.route_data_pattern, data)
+        if not matches: raise Exception(f'读取结果失败: {data}')
+
+        Vce = float(matches[1])
+        Ic = float(matches[2])
+        return Vce, Ic
     
-    def read2(self, func: str) -> float:
-        self.instr.write(func)
-        return float(self.instr.query('READ?'))
-    
-    def read_dc_volt(self):
-        return self.read2('FUNC "VOLTage"')
-    
-    def read_dc_current(self):
-        return self.read2('FUNC "CURRent"')
+

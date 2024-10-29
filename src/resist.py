@@ -7,12 +7,12 @@ class Resist(QObject):
         super().__init__(parent)
 
         port = QSerialPort(info, self)
-        port.setBaudRate(4800)
+        port.setBaudRate(9600)
         if not port.open(QSerialPort.OpenModeFlag.ReadWrite):
             port.deleteLater()
             raise Exception(port.errorString())
         
-        port.readyRead.connect(self.read_all)
+        # port.readyRead.connect(self.read_all)
         self.port = port
 
     def disconnects(self):
@@ -36,7 +36,8 @@ class Resist(QObject):
         if res < 10e-2:
             bits = 0b0000_0001
         else:
-            exp = int(math.ceil(math.log(res)))
+            exp = int(math.floor(math.log(res, 10)))
             bits = (1 << (exp + 1)) & 0xFF
         bits = ~bits & 0xFF
         self.port.write(bytes([0xAA, bits, 0xFF, 0xFF, 0xFF, 0x55]))
+        self.port.waitForBytesWritten()
