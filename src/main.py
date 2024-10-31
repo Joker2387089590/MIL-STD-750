@@ -1,298 +1,104 @@
-import sys, math, debugpy
-from dataclasses import dataclass
-from contextlib import ExitStack
-from PySide6 import QtCore, QtGui, QtWidgets, QtCharts
-from PySide6.QtCore import Signal, Slot, QThread, Qt
-from PySide6.QtSerialPort import QSerialPortInfo
-from .context import Argument, Device, Context
-from .main_ui import Ui_MainWindow
-
-class Chart(QtCharts.QChart):
-    def __init__(self):
-        super().__init__()
-        self.ax = QtCharts.QLogValueAxis()
-        self.ay = QtCharts.QLogValueAxis()
-        self.ax.setLabelFormat('%gV')
-        self.ay.setLabelFormat('%gA')
-        self.addAxis(self.ax, Qt.AlignmentFlag.AlignBottom)
-        self.addAxis(self.ay, Qt.AlignmentFlag.AlignLeft)
-        self.trace: QtCharts.QLineSeries | None = None
-        self.mapping: dict[tuple[float, float], tuple[float, float]] = {}
-
-    def make_new_trace(self):
-        if self.trace:
-            self.removeSeries(self.trace)
-        line_vce_ic = QtCharts.QLineSeries(self)
-        line_vce_ic.hovered.connect(self.show_point_tooltip)
-
-        self.addSeries(line_vce_ic)
-        line_vce_ic.attachAxis(self.ax)
-        line_vce_ic.attachAxis(self.ay)
-        self.trace = line_vce_ic
-        self.mapping = {}
-
-    @Slot()
-    def show_point_tooltip(self, point: QtCore.QPointF, state: bool):
-        pass
-    
-    @Slot()
-    def add_test_point(self, Vc: float, Ve: float, Vce: float, Ic: float):
-        if Ic < 1e-4: Ic = 1e-4
-        self.trace.append(Vce, Ic)
-        self.mapping[(Vc, Ve)] = (Vce, Ic)
+import json, debugpy
+from pathlib import Path
+from PySide6 import QtCore, QtWidgets
+from PySide6.QtCore import Signal, Slot, QThread
+from .context import Context
+from .test import TestPanel
+from .device import DevicePanel
 
 class DebugThread(QThread):
     def run(self):
-        debugpy.debug_this_thread()
+        # debugpy.debug_this_thread()
         return super().run()
     
-class Devices(QtWidgets.QWidget):
-    connectRequested = Signal(list[str])
-    disconnectRequested = Signal(list[str])
+class MainWindow(QtWidgets.QMainWindow):
+    def __init__(self):
+        super().__init__()
+        self.setWindowTitle('三极管安全工作区测试平台')
 
-    def __init__(self, parent = None, f = Qt.WindowType.Widget):
-        super().__init__(parent, f)
+        style = Path(__file__).with_name('style.qss')
+        with open(style, 'r', encoding='UTF-8') as file:
+            self.setStyleSheet(file.read())
 
-        @dataclass
-        class Panel:
-            ip: QtWidgets.QLineEdit
-            connects: QtWidgets.QPushButton
-            disconnects: QtWidgets.QPushButton
+        self.io_thread = DebugThread(self)
+        self.tab = QtWidgets.QTabWidget(self)
+        scroll = QtWidgets.QScrollArea(self.tab)
+        self.devices = DevicePanel(scroll)
+        self.tests = TestPanel(self.tab)
+        self.context = Context()
 
-        self.devices: dict[str, Panel] = {}
+        scroll.setWidget(self.devices)
+        scroll.setWidgetResizable(True)
 
-        devices = [
-            ('Vce', '数字万用表 SDM4065A', '测量 V<sub>ce</sub>'),
-            ('Vbe', '数字万用表 SDM4065A', '测量 V<sub>be</sub>'),
-            ('Vcb', '数字万用表 SDM4065A', '测量 V<sub>cb</sub>'),
-            ('Ic',  '数字万用表 SDM4065A', '测量 I<sub>c</sub>'),
-            ('Ie',  '数字万用表 SDM4065A', '测量 I<sub>e</sub>'),
-            ('Vc',  '直流电源 IT-M3900D',  '输出 V<sub>c</sub>'),
-            ('Ve',  '直流电源 IT-M3900D',  '输出 V<sub>e</sub>'),
-        ]
-        vlayout = QtWidgets.QVBoxLayout(self)
-        for key, model, name in devices:
-            w = QtWidgets.QWidget(self)
-            vlayout.addWidget(w)
+        self.tab.addTab(scroll, '设备管理')
+        self.tab.addTab(self.tests, '测试管理')
+        # TODO: add result view
+        self.setCentralWidget(self.tab)
 
-            layout = QtWidgets.QFormLayout(w)
+        self.context.moveToThread(self.io_thread)
 
-            ip = QtWidgets.QLineEdit(parent=w)
-            xmodel = QtWidgets.QLabel(model, w)
-            xmodel.setTextFormat(Qt.TextFormat.RichText)
-            connects = QtWidgets.QPushButton('连接', parent=w)
-            disconnects = QtWidgets.QPushButton('断开', parent=w)
+        self.tests.startRequested.connect(self.start_test)
+        self.tests.pauseRequested.connect(self.context.pause)
+        self.tests.abortRequested.connect(self.context.abort)
+        # self.devices.connectRequested.connect(self.context.connect_device)
+        # self.devices.disconnectRequested.connect(self.context.disconnect_device)
+        self.context.stateChanged.connect(self.update_running_state)
+        # self.context.deviceChanged.connect(self.devices.update_state)
+        self.context.npn_tested.connect(self.tests.add_npn_results)
 
-            disconnects.setEnabled(False)
+        self.context.errorOccurred.connect(self.show_error)
 
-            connects.clicked.connect(lambda: self._try_connect(key))
-            disconnects.clicked.connect(lambda: self._try_disconnect(key))
+        self.update_running_state('pass')
 
-            xlayout = QtWidgets.QHBoxLayout()
-            xlayout.addWidget(xmodel)
-            xlayout.addWidget(connects)
-            xlayout.addWidget(disconnects)
-
-            layout.addRow(xlayout)
-            layout.addRow('设备功能', QtWidgets.QLabel(name, w))
-            layout.addRow('IP 地址', ip)
-            layout.setHorizontalSpacing(150)
-
-            self.devices[key] = Panel(
-                ip=ip,
-                connects=connects,
-                disconnects=disconnects
-            )
-
-        layout_all = QtWidgets.QHBoxLayout()
-        connects_all = QtWidgets.QPushButton(self)
-        disconnects_all = QtWidgets.QPushButton(self)
-
-        layout_all.addStretch(1)
-        layout_all.addWidget(connects_all)
-        layout_all.addWidget(disconnects_all)
-
-        vlayout.addLayout(layout_all)
-        vlayout.addStretch(1)
-
-    def _try_connect(self, key):
-        panel = self.get_panel(key)
-        panel.connects.setEnabled(False)
-        self.connectRequested.emit(key)
-
-    def _try_disconnect(self, key):
-        panel = self.get_panel(key)
-        panel.disconnects.setEnabled(False)
-        self.disconnectRequested.emit(key)
-
-    def get_panel(self, key):
-        return self.devices[key]
-    
-    def update_state(self, key, connected: bool):
-        panel = self.get_panel(key)
-        panel.connects.setDisabled(connected)
-        panel.disconnects.setEnabled(connected)
-        self.setEnabled(True)
+    def show_error(self, msg: str):
+        QtWidgets.QMessageBox.critical(self, '发生错误', msg)
 
     def save(self):
-        ...
+        data = {
+            'test': self.tests.save(),
+            'device': self.devices.save(),
+        }
+        with open(Path(__file__).with_name('config.json'), 'w', encoding='utf-8') as f:
+            json.dump(data, f, indent=4, ensure_ascii=False, allow_nan=True)
+    
+    def load(self):
+        data = {}
+        config = Path(__file__).with_name('config.json')
+        if config.exists():
+            with open(config, 'r', encoding='utf-8') as f:
+                content = f.read()
+                if content: data = data = json.loads(content)
+        self.tests.load(data.get('test', dict()))
+        self.devices.load(data.get('device', dict()))
 
-    def load(self, data):
-        ...
-
-class MainWindow(QtWidgets.QMainWindow):
-    def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
-        super().__init__(parent)
-        self.device: Device | None = None
-        self.io_thread = DebugThread(self)
-        self.chart_vce_ic = Chart()
-        self.target_series: QtCharts.QLineSeries | None = None
-        self.setup_ui(Ui_MainWindow())
+    def __enter__(self):
+        self.load()
         self.io_thread.start()
-
-    def setup_ui(self, ui: Ui_MainWindow):
-        self.ui = ui
-
-        ui.setupUi(self)
-        ui.chartView.setRenderHint(QtGui.QPainter.RenderHint.Antialiasing, True)
-        ui.chartView.setChart(self.chart_vce_ic)
-        ui.wControl.setEnabled(False)
-
-        ui.btnConnect.clicked.connect(self.connects)
-        ui.btnDisconnect.clicked.connect(self.disconnects)
-        ui.btnRefreshPort.clicked.connect(self.update_serial_info)
-
-        ui.btnStart.clicked.connect(self.start_test)
-
-        ui.Vce.editingFinished.connect(self.check_arguments)
-        ui.ic.editingFinished.connect(self.check_arguments)
-        ui.Pmax.editingFinished.connect(self.check_arguments)
-
-        self.update_serial_info()
-        self.check_arguments()
-
-    @property
-    def input_Ic(self):
-        return self.ui.ic.value() * 1e-3 # mA => A
+        self.show()
+        return self
     
-    @property
-    def input_Pmax(self):
-        return self.ui.Pmax.value() * 1e-3 # mW => W
-
-    def check_arguments(self):
-        if self.target_series:
-            self.chart_vce_ic.removeSeries(self.target_series)
-            self.target_series = None
-
-        Vce = self.ui.Vce.value()
-        Ic = self.input_Ic
-        Pmax = self.input_Pmax
-
-        if Pmax > Vce * Ic:
-            self.ui.Pmax.setStyleSheet('''
-                QDoubleSpinBox { border: 1px solid red; }
-            ''')
-            return
-        self.ui.Pmax.setStyleSheet('')
-
-        Vce_mid = Pmax / Ic
-        Ic_mid = Pmax / Vce
-
-        self.target_series = QtCharts.QLineSeries(self.chart_vce_ic)
-        self.target_series.append(0.01, Ic)
-        self.target_series.append(Vce_mid, Ic)
-        self.target_series.append(Vce, Ic_mid)
-        self.target_series.append(Vce, 1e-4)
-
-        self.chart_vce_ic.addSeries(self.target_series)
-        self.target_series.attachAxis(self.chart_vce_ic.ax)
-        self.target_series.attachAxis(self.chart_vce_ic.ay)
-        self.chart_vce_ic.ax.setRange(0.01, Vce * 10)
-        self.chart_vce_ic.ay.setRange(1e-4, Ic * 10)
-
-    def update_serial_info(self):
-        old = self.ui.port.currentText()
-        self.ui.port.clear()
-
-        self.ports = QSerialPortInfo.availablePorts()
-        if len(self.ports) == 0: return
-
-        self.ui.port.addItems([port.portName() for port in self.ports])
-        if old in self.ports:
-            self.ui.port.setCurrentText(old)
-        else:
-            self.ui.port.setCurrentIndex(0)
-
-    @Slot()
-    def connects(self):
-        try:
-            with ExitStack() as stack:
-                device = Device(
-                    resist=self.ports[self.ui.port.currentIndex()], 
-                    dmm=self.ui.dmm.text(),
-                    power_vc=self.ui.powerVc.text(),
-                    power_ve=self.ui.powerVe.text(),
-                )
-                device.moveToThread(self.io_thread)
-                self.device = device
-                def clean_devices():
-                    self.device.disconnects()
-                    del self.device
-                stack.callback(clean_devices)
-
-                self.set_connect_state(True)
-                stack.callback(self.set_connect_state, False)
-
-                self._disconnects = stack.pop_all()
-        except Exception as e:
-            print(e, file=sys.stderr)
-
-    @Slot()
-    def disconnects(self):
-        self._disconnects.close()
-    
-    def set_connect_state(self, connected: bool):
-        self.ui.btnConnect.setDisabled(connected)
-        self.ui.btnDisconnect.setEnabled(connected)
-        self.ui.wControl.setEnabled(connected)
-        self.ui.wDevices.setDisabled(connected)
+    def __exit__(self, *exception):
+        self.io_thread.quit()
+        self.io_thread.wait()
+        self.save()
 
     @Slot()
     def start_test(self):
-        arg = Argument(
-            Vce=self.ui.Vce.value(),
-            Ic=self.input_Ic,
-            Pmax=self.input_Pmax,
-            hFE=self.ui.hFE.value(),
-            Vc_max=self.ui.maxVc.value(),
-            Ve_max=self.ui.maxVe.value(),
-        )
-        context = Context(arg, self.device)
-        self.ui.btnPause.clicked.connect(context.pause)
-        self.ui.btnStop.clicked.connect(context.stop)
-        context.stopped.connect(self.finish_test)
+        self.tests.reset_chart()
+        arg = self.tests.get_arguments()
+        dev = self.devices.get_devices()
+        QtCore.QTimer.singleShot(
+            0, self.context,
+            lambda: self.context.run(arg, dev))
 
-        self.chart_vce_ic.make_new_trace()
-        context.pointTested.connect(self.chart_vce_ic.add_test_point)
-
-        self.ui.wConnect.setDisabled(True)
-        self.ui.btnStart.setEnabled(False)
-        self.ui.btnPause.setEnabled(True)
-        self.ui.btnStop.setEnabled(True)
-
-        context.moveToThread(self.io_thread)
-        QtCore.QTimer.singleShot(0, context, context.run)
-    
     @Slot()
-    def finish_test(self):
-        self.ui.wConnect.setDisabled(False)
-        self.ui.btnStart.setEnabled(True)
-        self.ui.btnPause.setEnabled(False)
-        self.ui.btnStop.setEnabled(False)
+    def update_running_state(self, state: str):
+        running = state == 'is_running'
+        self.tests.update_running_state(running)
+        self.devices.setDisabled(running)
 
 if __name__ == '__main__':
     app = QtWidgets.QApplication()
-    w = MainWindow()
-    w.show()
-    exit(app.exec())
-
+    with MainWindow() as w:
+        ret = app.exec()
+    exit(ret)

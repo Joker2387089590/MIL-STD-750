@@ -19,6 +19,10 @@ class Resist(QObject):
         self.port.close()
         self.deleteLater()
 
+    def reconfig(self):
+        self.port.write(bytes[0xAA, 0xFF, 0xFF, 0xFF, 0xFF, 0x55])
+        self.port.waitForBytesWritten()
+
     @Slot()
     def read_all(self):
         while self.port.bytesAvailable() >= 6:

@@ -1,5 +1,6 @@
-import traceback, time
-from dataclasses import dataclass
+import traceback, time, math
+from typing import Literal
+from dataclasses import dataclass, asdict
 from contextlib import ExitStack
 from PySide6.QtCore import QObject, Signal, Slot
 from .resist import Resist
@@ -8,6 +9,7 @@ from .power import PowerCV
 
 @dataclass
 class Argument:
+    type: Literal['NPN', 'PNP']
     Vce: float
     Ic: float
     Pmax: float
@@ -22,9 +24,29 @@ class Argument:
     def Vce_mid(self): return self.Pmax / self.Ic
 
 @dataclass
-class State:
-    Vb: float
-    Vc: float
+class NpnResult:
+    Vc:  float = math.nan
+    Ve:  float = math.nan
+    Vce: float = math.nan
+    Vbe: float = math.nan
+    Vcb: float = math.nan
+    Ic:  float = math.nan
+    Ie:  float = math.nan
+    R:   float = math.nan
+
+@dataclass
+class PnpResult:
+    Vc:  float = math.nan
+    Ve:  float = math.nan
+    Vce: float = math.nan
+    Vbc: float = math.nan
+    Veb: float = math.nan
+    Ic:  float = math.nan
+    Ie:  float = math.nan
+    R:   float = math.nan
+
+def as_str(result):
+    return f', '.join(f'{key} = {value:.3f}' for key, value in asdict(result).items())
 
 def direction(value, target):
     if value < target * 0.95:
@@ -34,73 +56,114 @@ def direction(value, target):
     else:
         return 0
 
-class Device(QObject):
-    def __init__(self, resist, dmm, power_vc, power_ve) -> None:
-        super().__init__(None)
-        with ExitStack() as stack:
-            self.resist = Resist(resist, self); stack.callback(self.resist.disconnects)
-            self.dmm = Meter(dmm); stack.callback(self.dmm.disconnects)
-            self.power_vc = PowerCV(power_vc); stack.callback(self.power_vc.disconnects)
-            self.power_ve = PowerCV(power_ve); stack.callback(self.power_ve.disconnects)
-            self._disconnects = stack.pop_all()
-    
-    def disconnects(self):
-        self._disconnects.close()
-        self.deleteLater()
-
 class Context(QObject):
-    paused = Signal()
-    stopped = Signal()
-    pointTested = Signal(float, float, float, float) # Vc, Ve, Vce, Ic
+    stateChanged = Signal(str)
+    deviceChanged = Signal(str, bool)
+    npn_tested = Signal(NpnResult)
+    pnp_tested = Signal(PnpResult)
+    errorOccurred = Signal(str)
 
-    def __init__(self, arg: Argument, dev: Device) -> None:
-        super().__init__(None)
-        self.arg = arg
-        self.dev = dev
-        
-    def _test_no_cache(self, Vc: float, Ve: float):
+    DMM1: Meter
+    DMM2: Meter
+    DMM3: Meter
+    DMM4: Meter
+    DMM5: Meter
+    Power1: PowerCV
+    Power2: PowerCV
+    R: Resist
+
+    def _test_no_cache(self, V1: float, V2: float, output_time: float = 0.100):
+        self.Power1.set_voltage(V1)
+        self.Power2.set_voltage(V2)
+        with self.Power1, self.Power2:
+            time.sleep(output_time)
+            results = dict(
+                DMM1=self.DMM1.read_front(),
+                DMM2=self.DMM2.read_front(),
+                DMM3=self.DMM3.read_front(),
+                DMM4=self.DMM4.read_front(),
+                DMM5=self.DMM5.read_front(),
+                Power1=V1,
+                Power2=V2,
+                R=self._R,
+            )
+            print(f'[test:{time.time() - self.begin:.3f}s] {results.print()}')
+            return results
+
+    def _test_npn(self, Vc: float, Ve: float):
         if Vc > self.arg.Vc_max: raise Exception('Vc 超出限值')
         if Ve > self.arg.Ve_max: raise Exception('Ve 超出限值')
-        self.dev.power_vc.set_voltage(Vc)
-        self.dev.power_ve.set_voltage(Ve)
-        time.sleep(0.100)
-        Vce, Ic = self.dev.dmm.read()
-        print(f'[test:{time.time() - self.begin:.3f}s] {Vc = :.3f}V, {Ve = :.3f}V, {Vce = :.3f}V, Ic = {Ic * 1e3:.3f}mA')
-        return Vce, Ic
-
-    def _test(self, Vc: float, Ve: float):
-        Vce, Ic = self._test_no_cache(Vc, Ve)
-        self.pointTested.emit(Vc, Ve, Vce, Ic)
-        return Vce, Ic
+        results = self._test_no_cache(Vc, Ve)
+        xresult = NpnResult(
+            Vc=results['Vc'],
+            Ve=results['Ve'],
+            Vce=results['DMM1'],
+            Vbe=results['DMM2'],
+            Vcb=results['DMM3'],
+            Ic=results['DMM4'],
+            Ie=results['DMM5'],
+            R=results['R'],
+        )
+        self.npn_tested.emit(xresult)
+        return xresult.Vce, xresult.Ic
+    
+    def _test_pnp(self, Vc: float, Ve: float):
+        if Vc > self.arg.Vc_max: raise Exception('Vc 超出限值')
+        if Ve > self.arg.Ve_max: raise Exception('Ve 超出限值')
+        results = self._test_no_cache(Ve, Vc)
+        xresult = PnpResult(
+            Vc=results['Vc'],
+            Ve=results['Ve'],
+            Vce=-results['DMM1'],
+            Vbc=-results['DMM2'],
+            Veb=results['DMM3'],
+            Ic=results['DMM5'],
+            Ie=results['DMM4'],
+            R=results['R']
+        )
+        self.pnp_tested.emit(xresult)
+        return xresult.Vce, xresult.Ic
 
     @Slot()
-    def run(self):
+    def run(self, arg: Argument, dev: dict):
         try:
+            self.arg = arg
+            self.DMM1 = Meter(dev['DMM1'])
+            self.DMM2 = Meter(dev['DMM2'])
+            self.DMM3 = Meter(dev['DMM3'])
+            self.DMM4 = Meter(dev['DMM4'])
+            self.DMM5 = Meter(dev['DMM5'])
+            self.Power1 = Meter(dev['Power1'])
+            self.Power2 = Meter(dev['Power2'])
+            self.R = Resist(dev['R'])
+
             self.begin = time.time()
+            self.reconfig()
+            self.Power1.set_limit_current(self.arg.Ic * 1.5)
+            self.Power1.set_limit_current(self.arg.Ic * 1.5)
+            self.stateChanged.emit('is_running')
 
-            self.dev.power_vc.reconfig()
-            self.dev.power_ve.reconfig()
-            self.dev.dmm.reconfig()
-
-            self.dev.power_vc.set_limit_current(self.arg.Ic * 1.5)
-            self.dev.power_ve.set_limit_current(self.arg.Ic * 1.5)
-
-            with self.dev.power_vc, self.dev.power_ve:
-                Vc, Ve = self.stage1()
-                Vc, Ve = self.stage2(Vc, Ve)
-                Vc, Ve = self.stage3(Vc, Ve)
-                self.stage4(Vc, Ve)
-        except KeyboardInterrupt:
-            pass
-        except:
+            self.setup_resist()
+            Vc, Ve = self.stage1()
+            Vc, Ve = self.stage2(Vc, Ve)
+            Vc, Ve = self.stage3(Vc, Ve)
+            self.stage4(Vc, Ve)
+            self.stateChanged.emit('pass')
+        except Exception as e:
             traceback.print_exc()
-        finally:
-            self.stopped.emit()
+            self.errorOccurred.emit(str(e))
+            self.stateChanged.emit('fail')
+
+    def reconfig(self, dev):
+        for key in ['DMM1', 'DMM2', 'DMM3', 'DMM4', 'DMM5', 'Power1', 'Power2']:
+            if hasattr(self, key):
+                getattr(self, key).reconfig()
 
     def setup_resist(self):
         # 尝试电阻的等级
         Req = self.arg.hFE * self.arg.Vce / self.arg.Ic * 0.1
-        self.dev.resist.set_value(Req)
+        self.R.set_value(Req)
+        self._R = Req
 
     def stage1(self):
         # 匹配 (Vce, 0)
@@ -208,5 +271,5 @@ class Context(QObject):
         ...
 
     @Slot()
-    def stop(self):
+    def abort(self):
         ...
