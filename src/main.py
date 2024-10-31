@@ -8,13 +8,13 @@ from .device import DevicePanel
 
 class DebugThread(QThread):
     def run(self):
-        # debugpy.debug_this_thread()
+        debugpy.debug_this_thread()
         return super().run()
     
 class MainWindow(QtWidgets.QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle('三极管安全工作区测试平台')
+        self.setWindowTitle('晶体管安全工作区测试平台')
 
         style = Path(__file__).with_name('style.qss')
         with open(style, 'r', encoding='UTF-8') as file:

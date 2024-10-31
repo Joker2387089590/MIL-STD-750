@@ -127,21 +127,21 @@ class Context(QObject):
     @Slot()
     def run(self, arg: Argument, dev: dict):
         try:
+            self.stateChanged.emit('is_running')
             self.arg = arg
-            self.DMM1 = Meter(dev['DMM1'])
-            self.DMM2 = Meter(dev['DMM2'])
-            self.DMM3 = Meter(dev['DMM3'])
-            self.DMM4 = Meter(dev['DMM4'])
-            self.DMM5 = Meter(dev['DMM5'])
-            self.Power1 = Meter(dev['Power1'])
-            self.Power2 = Meter(dev['Power2'])
+            self.DMM1 = Meter(dev['DMM1'], 'VOLTage')
+            self.DMM2 = Meter(dev['DMM2'], 'VOLTage')
+            self.DMM3 = Meter(dev['DMM3'], 'VOLTage')
+            self.DMM4 = Meter(dev['DMM4'], 'CURRent')
+            self.DMM5 = Meter(dev['DMM5'], 'CURRent')
+            self.Power1 = PowerCV(dev['Power1'])
+            self.Power2 = PowerCV(dev['Power2'])
             self.R = Resist(dev['R'])
 
             self.begin = time.time()
             self.reconfig()
             self.Power1.set_limit_current(self.arg.Ic * 1.5)
             self.Power1.set_limit_current(self.arg.Ic * 1.5)
-            self.stateChanged.emit('is_running')
 
             self.setup_resist()
             Vc, Ve = self.stage1()
@@ -154,7 +154,7 @@ class Context(QObject):
             self.errorOccurred.emit(str(e))
             self.stateChanged.emit('fail')
 
-    def reconfig(self, dev):
+    def reconfig(self):
         for key in ['DMM1', 'DMM2', 'DMM3', 'DMM4', 'DMM5', 'Power1', 'Power2']:
             if hasattr(self, key):
                 getattr(self, key).reconfig()
@@ -187,7 +187,7 @@ class Context(QObject):
     def stage2(self, Vc: float, Ve: float):
         # 匹配 (Vce, 0) => (Vce, Ic_mid)
         while True:
-            Vce, Ic = self._test(Vc, Ve)
+            Vce, Ic = self._test_npn(Vc, Ve)
 
             match direction(Vce, self.arg.Vce):
                 case -1:
@@ -217,7 +217,7 @@ class Context(QObject):
     def stage3(self, Vc: float, Ve: float):
         # 匹配 (Vce, Ic_mid) => (Vce_mid, Ic)
         while True:
-            Vce, Ic = self._test(Vc, Ve)
+            Vce, Ic = self._test_npn(Vc, Ve)
 
             if direction(Ic, self.arg.Ic) > 0:
                 print(f'-- match 3', flush=True)
@@ -245,7 +245,7 @@ class Context(QObject):
                 print('-- match 3')
                 break
 
-            Vce, Ic = self._test(Vc, Ve)
+            Vce, Ic = self._test_npn(Vc, Ve)
             
             if Vce < 0.01:
                 print('-- match 4')

@@ -1,4 +1,4 @@
-import pyvisa
+import pyvisa, time
 from pyvisa.resources.tcpip import TCPIPInstrument
 
 class Power:
@@ -8,7 +8,9 @@ class Power:
 
     def reconfig(self):
         cmds = [':SYSTem:REMote', '*RST', '*WAI']
-        for cmd in cmds: self.instr.write(cmd)
+        for cmd in cmds: 
+            self.instr.write(cmd)
+            time.sleep(0.100)
 
     def disconnects(self):
         self.instr.close()

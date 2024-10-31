@@ -4,12 +4,13 @@ from pyvisa.resources.tcpip import TCPIPInstrument
 from pyvisa.constants import ResourceAttribute
 
 class Meter:
-    def __init__(self, ip: str):
+    def __init__(self, ip: str, func: Literal['VOLTage', 'CURRent']):
         rm = pyvisa.ResourceManager()
         self.instr: TCPIPInstrument = rm.open_resource(f'TCPIP::{ip}::INSTR')
         self.instr.set_visa_attribute(ResourceAttribute.timeout_value, 1_000)
+        self.func = func
 
-    def reconfig_function(self, func: Literal['VOLTage', 'CURRent']):
+    def reconfig(self):
         self.instr.write('*RST')
         time.sleep(2.000)
 
@@ -19,13 +20,13 @@ class Meter:
             'SAMPle:COUNt 1',
             'VOLTage:NPLC 10',
             'CURRent:NPLC 10',
-            f'FUNC "{func}"',
+            f'FUNC "{self.func}"',
         ]
         for cmd in cmds:
             self.instr.write(cmd)
             time.sleep(0.100)
 
-    def reconfig(self):
+    def reconfig_rear(self):
         self.instr.write('*RST')
         time.sleep(2.000)
 
