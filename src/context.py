@@ -76,6 +76,7 @@ class Context(QObject):
         self.Power1.set_voltage(V1)
         self.Power2.set_voltage(V2)
         with self.Power1, self.Power2:
+            # NOTE: 此处开始打开电源
             time.sleep(output_time)
             results = dict(
                 DMM1=self.DMM1.read_front(),
@@ -87,7 +88,6 @@ class Context(QObject):
                 Power2=V2,
                 R=self._R,
             )
-            print(f'[test:{time.time() - self.begin:.3f}s] {results.print()}')
             return results
 
     def _test_npn(self, Vc: float, Ve: float):
@@ -95,8 +95,8 @@ class Context(QObject):
         if Ve > self.arg.Ve_max: raise Exception('Ve 超出限值')
         results = self._test_no_cache(Vc, Ve)
         xresult = NpnResult(
-            Vc=results['Vc'],
-            Ve=results['Ve'],
+            Vc=results['Power1'],
+            Ve=results['Power2'],
             Vce=results['DMM1'],
             Vbe=results['DMM2'],
             Vcb=results['DMM3'],
@@ -104,7 +104,8 @@ class Context(QObject):
             Ie=results['DMM5'],
             R=results['R'],
         )
-        self.npn_tested.emit(xresult)
+        print(f'[test:{time.time() - self.begin:.3f}s] {as_str(xresult)}')
+        # self.npn_tested.emit(xresult)
         return xresult.Vce, xresult.Ic
     
     def _test_pnp(self, Vc: float, Ve: float):
@@ -112,15 +113,16 @@ class Context(QObject):
         if Ve > self.arg.Ve_max: raise Exception('Ve 超出限值')
         results = self._test_no_cache(Ve, Vc)
         xresult = PnpResult(
-            Vc=results['Vc'],
-            Ve=results['Ve'],
+            Vc=results['Power2'],
+            Ve=results['Power1'],
             Vce=-results['DMM1'],
             Vbc=-results['DMM2'],
-            Veb=results['DMM3'],
+            Veb=-results['DMM3'],
             Ic=results['DMM5'],
             Ie=results['DMM4'],
             R=results['R']
         )
+        print(f'[test:{time.time() - self.begin:.3f}s] {as_str(xresult)}')
         self.pnp_tested.emit(xresult)
         return xresult.Vce, xresult.Ic
 
@@ -153,6 +155,9 @@ class Context(QObject):
             traceback.print_exc()
             self.errorOccurred.emit(str(e))
             self.stateChanged.emit('fail')
+        finally:
+            # TODO: 断开所有仪器
+            ...
 
     def reconfig(self):
         for key in ['DMM1', 'DMM2', 'DMM3', 'DMM4', 'DMM5', 'Power1', 'Power2']:
@@ -170,18 +175,18 @@ class Context(QObject):
         Vc = self.arg.Vce / 2
         Ve = self.arg.Vce / 2
         while True:
-            Vce, Ic = self._test(Vc, Ve)
+            Vce, Ic = self._test_npn(Vc, Ve)
             match direction(Vce, self.arg.Vce):
                 case -1:
                     print(f'adjust Vce lower', flush=True)
-                    Vc += 0.1
+                    Vc += 1
                     continue
                 case 0:
                     print(f'match 1')
                     return Vc, Ve
                 case 1:
                     print(f'adjust Vce upper', flush=True)
-                    Vc -= 0.01
+                    Vc -= 0.1
                     continue
 
     def stage2(self, Vc: float, Ve: float):
@@ -196,22 +201,22 @@ class Context(QObject):
                     continue
                 case 1:
                     print(f'adjust Vce upper', flush=True)
-                    Vc -= 0.01
-                    Ve += 0.01
+                    Vc -= 0.1
+                    Ve += 0.1
                     continue
             
             match direction(Ic, self.arg.Ic_mid):
                 case -1:
                     print(f'adjust Ic lower', flush=True)
-                    Vc += 0.1
-                    Ve += 0.1
+                    Vc += 1
+                    Ve += 1
                     continue
                 case 0:
                     print(f'-- match 2')
                     return Vc, Ve
                 case 1:
                     print(f'adjust Ic upper', flush=True)
-                    Vc -= 0.01
+                    Ve += 0.1
                     continue
 
     def stage3(self, Vc: float, Ve: float):

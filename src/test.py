@@ -104,16 +104,16 @@ class TestPanel(QtWidgets.QWidget):
         Ic_mid = Pmax / Vce
 
         self.target_series = QtCharts.QLineSeries(self.chart_vce_ic)
-        self.target_series.append(0.01, Ic)
+        self.target_series.append(0.001, Ic)
         self.target_series.append(Vce_mid, Ic)
         self.target_series.append(Vce, Ic_mid)
-        self.target_series.append(Vce, 1e-4)
+        self.target_series.append(Vce, 1e-5)
 
         self.chart_vce_ic.addSeries(self.target_series)
         self.target_series.attachAxis(self.chart_vce_ic.ax)
         self.target_series.attachAxis(self.chart_vce_ic.ay)
-        self.chart_vce_ic.ax.setRange(0.01, Vce * 10)
-        self.chart_vce_ic.ay.setRange(1e-4, Ic * 10)
+        self.chart_vce_ic.ax.setRange(0.001, Vce * 10)
+        self.chart_vce_ic.ay.setRange(1e-5, Ic * 10)
 
     def get_arguments(self):
         return Argument(
@@ -139,7 +139,7 @@ class TestPanel(QtWidgets.QWidget):
     @Slot()
     def add_npn_results(self, results: NpnResult):
         self.chart_vce_ic.add_test_point(
-            Vc=results.Vc, 
+            Vc=results.Vc,
             Ve=results.Ve,
             Vce=results.Vce,
             Ic=results.Ic,

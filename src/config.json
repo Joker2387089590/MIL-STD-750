@@ -1,12 +1,12 @@
 {
     "test": {
         "type": "NPN",
-        "Vce": 5.0,
-        "Ic": 10.0,
+        "Vce": 10.0,
+        "Ic": 1.0,
         "unitIc": "mA",
-        "Pmax": 5.0,
+        "Pmax": 1.0,
         "unitPmax": "mW",
-        "hFE": 70,
+        "hFE": 50,
         "Vc_max": 20.0,
         "Ve_max": 20.0
     },
