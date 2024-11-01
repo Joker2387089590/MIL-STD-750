@@ -48,6 +48,18 @@ class Meter:
 
     data_points_pattern = re.compile(r'#(\d)(.*)')
 
+    def initiate(self):
+        self.instr.write(f'INIT')
+    
+    def fetch(self):
+        result = self.instr.query('R?')
+        matches = re.match(self.data_points_pattern, result)
+        assert matches
+        count = int(matches[1])
+        data = matches[2][count + 1:]
+        datas = data.split(',')
+        return float(datas[-1])
+
     def read_front(self) -> float:
         fail = time.time() + 10
         while time.time() < fail:
@@ -64,13 +76,6 @@ class Meter:
                     time.sleep(0.100)
                     continue
 
-                result = self.instr.query('R?')
-                matches = re.match(self.data_points_pattern, result)
-                assert matches
-                count = int(matches[1])
-                data = matches[2][count + 1:]
-                datas = data.split(',')
-                return float(datas[-1])
         assert False
         return math.nan
 

@@ -63,7 +63,11 @@ class TestPanel(QtWidgets.QWidget):
         ui.chartView.setRenderHint(QtGui.QPainter.RenderHint.Antialiasing, True)
         ui.chartView.setChart(self.chart_vce_ic)
 
-        ui.btnStart.clicked.connect(self.startRequested.emit)
+        def try_start():
+            self.ui.btnStart.setDisabled(True)
+            self.startRequested.emit()
+
+        ui.btnStart.clicked.connect(try_start)
         ui.btnPause.clicked.connect(self.pauseRequested.emit)
         ui.btnStop.clicked.connect(self.abortRequested.emit)
 
