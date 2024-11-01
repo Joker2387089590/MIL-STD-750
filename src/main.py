@@ -14,6 +14,7 @@ class DebugThread(QThread):
 class MainWindow(QtWidgets.QMainWindow):
     def __init__(self):
         super().__init__()
+        self.setFixedSize(1280, 720)
         self.setWindowTitle('晶体管安全工作区测试平台')
 
         style = Path(__file__).with_name('style.qss')
@@ -30,8 +31,8 @@ class MainWindow(QtWidgets.QMainWindow):
         scroll.setWidget(self.devices)
         scroll.setWidgetResizable(True)
 
-        self.tab.addTab(scroll, '设备管理')
         self.tab.addTab(self.tests, '测试管理')
+        self.tab.addTab(scroll, '设备管理')
         # TODO: add result view
         self.setCentralWidget(self.tab)
 

@@ -46,7 +46,7 @@ class PnpResult:
     R:   float = math.nan
 
 def as_str(result):
-    return '\n'.join(f'{key} = {value:.6f}' for key, value in asdict(result).items())
+    return ', '.join(f'{key}={value:.6f}' for key, value in asdict(result).items())
 
 def direction(value, target):
     if value < target * 0.95:
@@ -62,6 +62,7 @@ class Context(QObject):
     npn_tested = Signal(NpnResult)
     pnp_tested = Signal(PnpResult)
     errorOccurred = Signal(str)
+    test_point_matched = Signal(float, float, float, float)
 
     DMM1: Meter
     DMM2: Meter
@@ -78,12 +79,13 @@ class Context(QObject):
 
         with self.Power1, self.Power2:
             # NOTE: 此处开始打开电源
-            time.sleep(output_time)
+            time.sleep(0.050)
             for dmm in [self.DMM1, self.DMM2, self.DMM3, self.DMM4, self.DMM5]:
                 dmm.initiate()
+            time.sleep(0.550)
 
-        time.sleep(0.800)
-            
+        # time.sleep(0.300)
+
         results = dict(
             DMM1=self.DMM1.fetch(),
             DMM2=self.DMM2.fetch(),
@@ -99,6 +101,8 @@ class Context(QObject):
     def _test_npn(self, Vc: float, Ve: float):
         if Vc > self.arg.Vc_max: raise Exception('Vc 超出限值')
         if Ve > self.arg.Ve_max: raise Exception('Ve 超出限值')
+        if Vc < 0: raise Exception('Vc 匹配失败，请重新测试')
+        if Ve < 0: raise Exception('Ve 匹配失败，请重新测试')
         results = self._test_no_cache(Vc, Ve)
         xresult = NpnResult(
             Vc=results['Power1'],
@@ -152,18 +156,18 @@ class Context(QObject):
             self.errorOccurred.emit(str(e))
             self.stateChanged.emit('fail')
         finally:
-            self.DMM1.disconnects()
-            self.DMM2.disconnects()
-            self.DMM3.disconnects()
-            self.DMM4.disconnects()
-            self.DMM5.disconnects()
-            self.Power1.disconnects()
-            self.Power2.disconnects()
-            self.R.disconnects()
+            if hasattr(self, 'DMM1'): self.DMM1.disconnects(); del self.DMM1
+            if hasattr(self, 'DMM2'): self.DMM2.disconnects(); del self.DMM2
+            if hasattr(self, 'DMM3'): self.DMM3.disconnects(); del self.DMM3
+            if hasattr(self, 'DMM4'): self.DMM4.disconnects(); del self.DMM4
+            if hasattr(self, 'DMM5'): self.DMM5.disconnects(); del self.DMM5
+            if hasattr(self, 'Power1'): self.Power1.disconnects(); del self.Power1
+            if hasattr(self, 'Power2'): self.Power2.disconnects(); del self.Power2
+            if hasattr(self, 'R'): self.R.disconnects(); del self.R
 
     def reconfig(self):
         self.stateChanged.emit('初始化仪器')
-        for key in ['DMM1', 'DMM2', 'DMM3', 'DMM4', 'DMM5', 'Power1', 'Power2']:
+        for key in ['Power1', 'Power2', 'DMM1', 'DMM2', 'DMM3', 'DMM4', 'DMM5']:
             if hasattr(self, key):
                 getattr(self, key).reconfig()
         
@@ -177,8 +181,8 @@ class Context(QObject):
         def stage1():
             # 匹配 (Vce, 0)
             self.stateChanged.emit('第1步: 匹配 (Vce, 0)')
-            Vc = self.arg.Vce / 2
-            Ve = self.arg.Vce / 2
+            Vc = self.arg.Vce
+            Ve = 0
             while True:
                 Vce, Ic = self._test_npn(Vc, Ve)
                 match direction(Vce, self.arg.Vce):
@@ -194,64 +198,52 @@ class Context(QObject):
                         Vc -= 0.1
                         continue
 
+        def search_point(Vc: float, Ve: float, target_Vce: float, target_Ic: float):
+            while True:
+                Vce, Ic = self._test_npn(Vc, Ve)
+                match direction(Ic, target_Ic):
+                    case -1:
+                        print(f'adjust Ic lower', flush=True)
+                        Ve += 0.1
+                        continue
+                    case 0:
+                        while True:
+                            Vce, Ic = self._test_npn(Vc, Ve)
+                            if 
+                            match direction(Vce, target_Vce):
+                                case -1:
+                                    print(f'adjust Vce lower', flush=True)
+                                    Vc += 0.1
+                                    continue
+                                case 0:
+                                    self.test_point_matched.emit(Vc, Ve, Vce, Ic)
+                                    print(f'-- match {(Vc, Ve, Vce, Ic)}')
+                                    return Vc, Ve, Vce, Ic
+                                case 1:
+                                    print(f'adjust Vce upper', flush=True)
+                                    Vc -= 0.01
+                                    continue
+                            Vce, Ic = self._test_npn(Vc, Ve)
+                    case 1:
+                        print(f'adjust Ic upper', flush=True)
+                        Ve -= 0.01
+                        continue
+
         def stage2(Vc: float, Ve: float):
             # 匹配 (Vce, 0) => (Vce, Ic_mid)
             self.stateChanged.emit('第2步: 匹配 (Vce, Ic_mid)')
-            while True:
-                # logY = k logX + b
-                # log(Y / e^b) = log (X^k)
-                # Ic / e^b = Vce^k
-                # Vce / Ic 
-                Vce, Ic = self._test_npn(Vc, Ve)
-
-                match direction(Vce, self.arg.Vce):
-                    case -1:
-                        print(f'adjust Vce lower', flush=True)
-                        Vc -= (Vce - self.arg.Vce)
-                        continue
-                    case 1:
-                        print(f'adjust Vce upper', flush=True)
-                        Vc -= 0.1
-                        Ve += 0.1
-                        continue
-                
-                match direction(Ic, self.arg.Ic_mid):
-                    case -1:
-                        print(f'adjust Ic lower', flush=True)
-                        Vc += 1
-                        Ve += 1
-                        continue
-                    case 0:
-                        print(f'-- match 2')
-                        return Vc, Ve
-                    case 1:
-                        print(f'adjust Ic upper', flush=True)
-                        Ve += 0.1
-                        continue
+            for i in range(1, 5 + 1):
+                Vc, Ve, Vce, Ic = search_point(Vc, Ve, self.arg.Vce, self.arg.Ic_mid * i / 5)
+            return Vc, Ve
 
         def stage3(Vc: float, Ve: float):
             # 匹配 (Vce, Ic_mid) => (Vce_mid, Ic)
-            while True:
-                Vce, Ic = self._test_npn(Vc, Ve)
-
-                if direction(Ic, self.arg.Ic) > 0:
-                    print(f'-- match 3', flush=True)
-                    return Vc, Ve
-
-                match direction(Vce * Ic, self.arg.Pmax):
-                    case -1:
-                        print(f'adjust Pmax lower', flush=True)
-                        Vc += 0.01
-                        Ve += 0.01
-                        continue
-                    case 0:
-                        print(f'adjust Pmax mid', flush=True)
-                        Ve += 0.1
-                        continue
-                    case 1:
-                        print(f'adjust Pmax upper', flush=True)
-                        Vc -= 0.01
-                        continue
+            delta_Vce = self.arg.Vce - self.arg.Vce_mid
+            for i in range(1, 5 + 1):
+                target_Vce = self.arg.Vce - i / 5 * delta_Vce
+                target_Ic = self.arg.Pmax / target_Vce
+                Vc, Ve, Vce, Ic = search_point(Vc, Ve, target_Vce, target_Ic)
+            return Vc, Ve
 
         def stage4(Vc: float, Ve: float):
             # 匹配 (Vce_mid, Ic) => (0, Ic)

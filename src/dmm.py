@@ -22,6 +22,8 @@ class Meter:
             'CURRent:NPLC 10',
             f'FUNC "{self.func}"',
         ]
+        if self.func == 'CURRent':
+            cmds.append('CURRent:DC:RANGe 2mA')
         for cmd in cmds:
             self.instr.write(cmd)
             time.sleep(0.100)

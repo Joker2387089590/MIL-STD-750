@@ -20,8 +20,8 @@ class Chart(QtCharts.QChart):
         super().__init__()
         self.ax = QtCharts.QLogValueAxis()
         self.ay = QtCharts.QLogValueAxis()
-        self.ax.setLabelFormat('%gV')
-        self.ay.setLabelFormat('%gA')
+        self.ax.setLabelFormat('%.0gV')
+        self.ay.setLabelFormat('%.0gA')
         self.addAxis(self.ax, Qt.AlignmentFlag.AlignBottom)
         self.addAxis(self.ay, Qt.AlignmentFlag.AlignLeft)
         self.trace: QtCharts.QLineSeries | None = None
@@ -175,3 +175,4 @@ class TestPanel(QtWidgets.QWidget):
         self.ui.hFE.setValue(data.get('hFE', 70))
         self.ui.maxVc.setValue(data.get('Vc_max', 20.0))
         self.ui.maxVe.setValue(data.get('Ve_max', 20.0))
+        self.check_arguments()
