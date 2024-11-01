@@ -93,7 +93,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
     @Slot()
     def update_running_state(self, state: str):
-        running = state == 'is_running'
+        running = (state != 'pass') and (state != 'fail')
         self.tests.update_running_state(running)
         self.devices.setDisabled(running)
 
