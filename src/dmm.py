@@ -52,13 +52,21 @@ class Meter:
         self.instr.write(f'INIT')
     
     def fetch(self):
-        result = self.instr.query('R?')
-        matches = re.match(self.data_points_pattern, result)
-        assert matches
-        count = int(matches[1])
-        data = matches[2][count + 1:]
-        datas = data.split(',')
-        return float(datas[-1])
+        end = time.time() + 3
+        while time.time() < end:
+            points = int(self.instr.query('DATA:POINts?'))
+            if points <= 0:
+                time.sleep(0.100)
+                continue
+
+            result = self.instr.query('R?')
+            matches = re.match(self.data_points_pattern, result)
+            assert matches
+            count = int(matches[1])
+            data = matches[2][count + 1:]
+            datas = data.split(',')
+            return float(datas[-1])
+        raise Exception('万用表测量触发失败')
 
     def read_front(self) -> float:
         fail = time.time() + 10

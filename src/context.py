@@ -82,7 +82,7 @@ class Context(QObject):
             for dmm in [self.DMM1, self.DMM2, self.DMM3, self.DMM4, self.DMM5]:
                 dmm.initiate()
 
-        time.sleep(0.200)
+        time.sleep(0.800)
             
         results = dict(
             DMM1=self.DMM1.fetch(),
