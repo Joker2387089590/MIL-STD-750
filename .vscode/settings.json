@@ -1,3 +1,9 @@
 {
-    "qtForPython.uic.liveExecution.enabled": true
+    "cmake.sourceDirectory": "C:/workspace/Repo/MIL-STD-750/launcher",
+    "cmake.buildDirectory": "${workspaceFolder}/build",
+    "cmake.configureSettings": {
+        "QT_CHAINLOAD_TOOLCHAIN_FILE": "C:/workspace/Programma/vcpkg/scripts/buildsystems/vcpkg.cmake",
+        "VCPKG_TARGET_TRIPLET": "x64-windows",
+        "X_VCPKG_APPLOCAL_DEPS_INSTALL": "ON"
+    }
 }
