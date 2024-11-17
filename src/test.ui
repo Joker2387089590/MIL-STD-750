@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>669</width>
-    <height>369</height>
+    <width>890</width>
+    <height>493</height>
    </rect>
   </property>
   <layout class="QGridLayout" name="gridLayout">
@@ -15,6 +15,9 @@
     <widget class="QSplitter" name="splitter">
      <property name="orientation">
       <enum>Qt::Orientation::Horizontal</enum>
+     </property>
+     <property name="childrenCollapsible">
+      <bool>false</bool>
      </property>
      <widget class="QWidget" name="wArguments" native="true">
       <layout class="QFormLayout" name="formLayout">
@@ -35,9 +38,9 @@
         </widget>
        </item>
        <item row="2" column="0">
-        <widget class="QLabel" name="h2_2">
+        <widget class="QLabel" name="h2_Vce">
          <property name="text">
-          <string>V&lt;sub&gt;ce&lt;/sub&gt;</string>
+          <string>V&lt;sub&gt;CE&lt;/sub&gt;</string>
          </property>
         </widget>
        </item>
@@ -86,7 +89,7 @@
        <item row="9" column="0">
         <widget class="QLabel" name="h2_5">
          <property name="text">
-          <string>V&lt;sub&gt;e&lt;/sub&gt;</string>
+          <string>V&lt;sub&gt;E&lt;/sub&gt;</string>
          </property>
         </widget>
        </item>
@@ -114,7 +117,7 @@
        <item row="8" column="0">
         <widget class="QLabel" name="h2_3">
          <property name="text">
-          <string>V&lt;sub&gt;c&lt;/sub&gt;</string>
+          <string>V&lt;sub&gt;C&lt;/sub&gt;</string>
          </property>
         </widget>
        </item>
@@ -370,13 +373,6 @@
            </widget>
           </item>
           <item>
-           <widget class="QPushButton" name="btnPause">
-            <property name="text">
-             <string>暂停</string>
-            </property>
-           </widget>
-          </item>
-          <item>
            <widget class="QPushButton" name="btnStop">
             <property name="text">
              <string>终止</string>
@@ -387,7 +383,14 @@
         </widget>
        </item>
        <item>
-        <widget class="QChartView" name="chartView"/>
+        <widget class="QChartView" name="chartView">
+         <property name="minimumSize">
+          <size>
+           <width>400</width>
+           <height>400</height>
+          </size>
+         </property>
+        </widget>
        </item>
        <item>
         <widget class="QLabel" name="label">

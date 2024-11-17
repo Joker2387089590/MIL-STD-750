@@ -20,8 +20,8 @@ class Chart(QtCharts.QChart):
         super().__init__()
         self.ax = QtCharts.QLogValueAxis()
         self.ay = QtCharts.QLogValueAxis()
-        self.ax.setLabelFormat('%gV')
-        self.ay.setLabelFormat('%gA')
+        self.ax.setLabelFormat('%.0gV')
+        self.ay.setLabelFormat('%.0gA')
         self.addAxis(self.ax, Qt.AlignmentFlag.AlignBottom)
         self.addAxis(self.ay, Qt.AlignmentFlag.AlignLeft)
         self.trace: QtCharts.QLineSeries | None = None
@@ -68,7 +68,6 @@ class TestPanel(QtWidgets.QWidget):
             self.startRequested.emit()
 
         ui.btnStart.clicked.connect(try_start)
-        ui.btnPause.clicked.connect(self.pauseRequested.emit)
         ui.btnStop.clicked.connect(self.abortRequested.emit)
 
         ui.Vce.editingFinished.connect(self.check_arguments)
@@ -134,7 +133,6 @@ class TestPanel(QtWidgets.QWidget):
     def update_running_state(self, running: bool):
         self.ui.btnStart.setDisabled(running)
         self.ui.wArguments.setDisabled(running)
-        self.ui.btnPause.setEnabled(running)
         self.ui.btnStop.setEnabled(running)
 
     def reset_chart(self):
@@ -175,3 +173,4 @@ class TestPanel(QtWidgets.QWidget):
         self.ui.hFE.setValue(data.get('hFE', 70))
         self.ui.maxVc.setValue(data.get('Vc_max', 20.0))
         self.ui.maxVe.setValue(data.get('Ve_max', 20.0))
+        self.check_arguments()
