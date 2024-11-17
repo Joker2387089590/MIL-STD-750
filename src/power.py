@@ -26,6 +26,21 @@ class Power:
     
     def clear_protection(self):
         self.instr.write('OUTPut:PROTection:CLEar')
+        
+    def config_arb(self, volt: float, time: float):
+        cmds = [
+            'TRIGger:ARB:SOURce BUS',
+            'FUNCtion:MODE LIST',
+            'ARB:FUNCtion:SHAPe PULSe',
+            'ARB:COUNt 1',
+            f'ARB:PULSe:START:LEVel {volt}',
+            f'ARB:PULSe:START:TIME 0',
+            f'ARB:PULSe:TOP:LEVel {volt}',
+            f'ARB:PULSe:TOP:TIME {time}',
+            f'ARB:PULSe:STOP:LEVel 0',
+        ]
+        for cmd in cmds:
+            self.instr.write(cmd)
 
 class PowerCC(Power):
     def reconfig(self):

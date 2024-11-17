@@ -41,7 +41,10 @@ class Resist(QObject):
             bits = 0b0000_0001
         else:
             exp = int(math.floor(math.log(res, 10)))
+            if exp > 6: return False
             bits = (1 << (exp + 1)) & 0xFF
+
         bits = ~bits & 0xFF
         self.port.write(bytes([0xAA, bits, 0xFF, 0xFF, 0xFF, 0x55]))
         self.port.waitForBytesWritten()
+        return True

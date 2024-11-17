@@ -2,7 +2,7 @@ import traceback, time, math, random
 from typing import Literal
 from dataclasses import dataclass, asdict
 from contextlib import ExitStack
-from PySide6.QtCore import QObject, Signal, Slot
+from PySide6.QtCore import QObject, Signal, Slot, QMetaMethod
 from .resist import Resist
 from .dmm import Meter
 from .power import PowerCV
@@ -57,6 +57,7 @@ def direction(value, target):
         return 0
 
 class Context(QObject):
+
     stateChanged = Signal(str)
     deviceChanged = Signal(str, bool)
     npn_tested = Signal(NpnResult)
@@ -71,6 +72,13 @@ class Context(QObject):
     Power1: PowerCV
     Power2: PowerCV
     R: Resist
+
+    def __init__(self, parent: QObject | None = None) -> None:
+        super().__init__(parent)
+        for i in range(self.metaObject().methodCount()):
+            method = self.metaObject().method(i)
+            
+            print(method.name())
 
     def _test_no_cache(self, V1: float, V2: float, output_time: float = 0.100):
         self.Power1.set_voltage(V1)
@@ -166,19 +174,25 @@ class Context(QObject):
         for key in ['DMM1', 'DMM2', 'DMM3', 'DMM4', 'DMM5', 'Power1', 'Power2']:
             if hasattr(self, key):
                 getattr(self, key).reconfig()
-        
-    def setup_resist(self):
-        # 尝试电阻的等级
-        Req = self.arg.Vce / self.arg.Ic
-        self.R.set_value(Req)
-        self._R = Req
 
     def run_npn(self):
+        self._R = 0.0
+        
+        def setup_resist():
+            # 尝试电阻的等级
+            Req = self.arg.Vce / self.arg.Ic
+            while True:
+                self.R.set_value(Req)
+                Vce, Ic = self._test_npn(self.arg.Vce, 0)
+                if Ic < self.arg.Ic_mid: break
+                Req *= 10
+            self._R = Req
+
         def stage1():
             # 匹配 (Vce, 0)
             self.stateChanged.emit('第1步: 匹配 (Vce, 0)')
-            Vc = self.arg.Vce / 2
-            Ve = self.arg.Vce / 2
+            Vc = self.arg.Vce
+            Ve = 0
             while True:
                 Vce, Ic = self._test_npn(Vc, Ve)
                 match direction(Vce, self.arg.Vce):
@@ -285,7 +299,8 @@ class Context(QObject):
         self.reconfig()
         self.Power1.set_limit_current(self.arg.Ic * 1.5)
         self.Power2.set_limit_current(self.arg.Ic * 1.5)
-        self.setup_resist()
+
+        setup_resist()
         Vc, Ve = stage1()
         Vc, Ve = stage2(Vc, Ve)
         Vc, Ve = stage3(Vc, Ve)

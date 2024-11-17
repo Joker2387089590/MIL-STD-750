@@ -30,7 +30,8 @@ class MainWindow(QtWidgets.QMainWindow):
         scroll.setWidget(self.devices)
         scroll.setWidgetResizable(True)
 
-        self.tab.addTab(scroll, '设备管理')
+        self.tab.addTab(
+            , '设备管理')
         self.tab.addTab(self.tests, '测试管理')
         # TODO: add result view
         self.setCentralWidget(self.tab)
