@@ -21,7 +21,7 @@
             "args": [
                 // "-platform", "windows:darkmode=0"
             ],
-            "guiEventLoop": "qt",
+            // "guiEventLoop": "qt",
             "justMyCode": false,
         }
     ]

@@ -19,7 +19,7 @@ class Argument:
     Vc_max: float
     Ve_max: float
 
-    targets: list[tuple[float, float]] = [] # Vce, Ic
+    # targets: list[tuple[float, float]] = [] # Vce, Ic
 
     @property
     def Ic_mid(self): return self.Pmax / self.Vce

@@ -1,4 +1,4 @@
-import json, debugpy, sys
+import json, debugpy
 from pathlib import Path
 from PySide6 import QtCore, QtWidgets
 from PySide6.QtCore import Slot, QThread
