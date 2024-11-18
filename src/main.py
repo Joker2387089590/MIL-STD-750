@@ -5,6 +5,7 @@ from PySide6.QtCore import Slot, QThread
 from .context import Context
 from .test import TestPanel
 from .device import DevicePanel
+from . import global_logger
 
 class DebugThread(QThread):
     def run(self):
@@ -38,6 +39,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.tests.abortRequested.connect(self.abort_test)
         self.context.stateChanged.connect(self.update_running_state)
         self.context.npn_tested.connect(self.tests.add_npn_results)
+        self.context.new_target_started.connect(self.tests.add_new_trace)
         self.context.errorOccurred.connect(self.show_error)
 
         self.update_running_state('pass')
@@ -95,14 +97,14 @@ class MainWindow(QtWidgets.QMainWindow):
 
 def main():
     # QtWidgets.QApplication.setDesktopSettingsAware(False)
-    logging.basicConfig(filename='all.log')
-    root = logging.getLogger()
+    logging.basicConfig(filename='all.log', level=logging.DEBUG)
+    
     handler_out = logging.StreamHandler(sys.stdout)
     handler_out.setLevel(logging.DEBUG)
-    root.addHandler(handler_out)
     handler_err = logging.StreamHandler(sys.stderr)
     handler_err.setLevel(logging.WARNING)
-    root.addHandler(handler_err)
+    for h in [handler_out, handler_err]:
+        global_logger.addHandler(h)
 
     app = QtWidgets.QApplication()
     style = Path(__file__).with_name('style.qss')

@@ -9,6 +9,9 @@ from .power import PowerCV
 
 log = logging.getLogger(__name__)
 
+class Cancellation(Exception):
+    pass
+
 @dataclass
 class Argument:
     type: Literal['NPN', 'PNP']
@@ -64,9 +67,9 @@ def as_str(result):
     return ', '.join(f'{key}={ss(value)}' for key, value in asdict(result).items())
 
 def direction(value, target, range = 0.05):
-    if value < target * (1 - range):
+    if abs(value) < target * (1 - range):
         return -1
-    elif value > target * (1 + range):
+    elif abs(value) > target * (1 + range):
         return 1
     else:
         return 0
@@ -78,6 +81,7 @@ class Context(QObject):
     pnp_tested = Signal(PnpResult)
     errorOccurred = Signal(str)
     test_point_matched = Signal(float, float, float, float)
+    new_target_started = Signal(float, float)
 
     DMM1: Meter
     DMM2: Meter
@@ -97,7 +101,7 @@ class Context(QObject):
         with ExitStack() as stack:
             self._mutex.lock()
             stack.callback(self._mutex.unlock)
-            if self._paused: raise Exception('终止测试')
+            if self._paused: raise Cancellation()
 
     def abort(self):
         with ExitStack() as stack:
@@ -161,6 +165,10 @@ class Context(QObject):
             else:
                 self.run_pnp()
             self.stateChanged.emit('pass')
+        except Cancellation:
+            log.warning('终止测试')
+            self.errorOccurred.emit('终止测试')
+            self.stateChanged.emit('fail')
         except Exception as e:
             log.exception('运行出现错误')
             self.errorOccurred.emit(str(e))
@@ -185,7 +193,7 @@ class Context(QObject):
             if Ve < 0: raise Exception('Ve 匹配失败，请重新测试')
 
             key = (Vc, Ve, Re, Rc)
-            if key in caches: return caches[key]
+            # if key in caches: return caches[key]
 
             results = self._test_no_cache(Vc, Ve)
             xresult = NpnResult(
@@ -199,7 +207,7 @@ class Context(QObject):
                 Rc=Rc,
                 Re=Re,
             )
-            log.debug(f'[test:{time.time() - self.begin:.3f}s] {as_str(xresult)}')
+            log.info(f'[test:{time.time() - self.begin:.3f}s] {as_str(xresult)}')
             self.npn_tested.emit(xresult)
 
             cache = (xresult.Vce, xresult.Ic)
@@ -207,26 +215,39 @@ class Context(QObject):
             return cache
         
         def search_point(target_Vce: float, target_Ic: float):
-            Req = target_Vce / target_Ic * 0.1
+            Req = target_Vce / target_Ic
             Re, Rc = self.R.set_resists(Req, Req)
+            log.info(f'{Req = }, {Rc = }, {Re = }')
 
             # 匹配 (Vce, 0)
             Vc = target_Vce * 0.7
             Ve = 0
             while True:
                 Vce, Ic = _test(Vc, Ve, Rc, Re)
+                exp = math.floor(math.log(abs(Vce - target_Vce), 10))
+                adjust = 10 ** max(-2, exp)
                 match direction(Vce, target_Vce):
                     case -1:
                         log.debug(f'adjust Vce lower')
-                        Vc += 1
+                        Vc += adjust
                         continue
+                    case 0:
+                        log.debug(f'match 1')
+                        break
+                    case 1:
+                        break
+
+            while True:
+                match direction(Vce, target_Vce):
+                    case -1:
+                        break
                     case 0:
                         log.debug(f'match 1')
                         break
                     case 1:
                         log.debug(f'adjust Vce upper')
                         Vc -= 0.1
-                        continue
+                Vce, Ic = _test(Vc, Ve, Rc, Re)
 
             # 匹配 (Vce, 0) => (Vce, Ic)
             while True:
@@ -234,29 +255,37 @@ class Context(QObject):
                 match direction(Ic, target_Ic):
                     case -1:
                         log.debug(f'adjust Ic lower')
+                        Vc += 0.1
                         Ve += 0.1
                         continue
-                    case 0:
-                        while True:
-                            exp = math.floor(math.log(abs(Vce - target_Vce), 10))
-                            adjust = 10 ** max(-2, exp)
+                    case _:
+                        break
 
-                            match direction(Vce, target_Vce):
-                                case -1:
-                                    Vc += adjust
-                                    log.debug(f'adjust Vce lower {Vc}')
-                                case 0:
-                                    log.debug(f'-- match {(target_Vce, target_Ic)} => {(Vc, Ve, Vce, Ic)}')
-                                    return Vc, Ve, Vce, Ic
-                                case 1:
-                                    Vc -= adjust
-                                    log.debug(f'adjust Vce upper {Vc}')
-                            Ve += direction(Ic, target_Ic, 0.1) * 0.01
-                            Vce, Ic = _test(Vc, Ve, Rc, Re)
+            while True:
+                match direction(Ic, target_Ic):
                     case 1:
                         log.debug(f'adjust Ic upper')
                         Ve -= 0.01
-                        continue
+                    case _:
+                        break
+                Vce, Ic = _test(Vc, Ve, Rc, Re)
+
+            while True:
+                exp = math.floor(math.log(abs(Vce - target_Vce), 10))
+                adjust = 10 ** max(-2, exp)
+
+                match direction(Vce, target_Vce):
+                    case -1:
+                        Vc += adjust
+                        log.debug(f'adjust Vce lower {Vc}')
+                    case 0:
+                        log.info(f'-- match {(target_Vce, target_Ic)} => {(Vc, Ve, Vce, Ic)}')
+                        return Vc, Ve, Vce, Ic
+                    case 1:
+                        Vc -= adjust
+                        log.debug(f'adjust Vce upper {Vc}')
+                Ve += direction(Ic, target_Ic, 0.1) * 0.01
+                Vce, Ic = _test(Vc, Ve, Rc, Re)
 
         points: list[tuple[float, float]] = []
         
@@ -284,6 +313,7 @@ class Context(QObject):
 
         # 开始测试
         for Vce, Ic in points:
+            self.new_target_started.emit(Vce, Ic)
             Vc, Ve, Vce, Ic = search_point(Vce, Ic)
             self.test_point_matched.emit(Vc, Ve, Vce, Ic)
 
@@ -388,6 +418,7 @@ class Context(QObject):
         points.extend((v, i) for v, i in zip(Vce, Ic))
 
         for target_Vce, target_Ic in points:
+            self.new_target_started.emit(target_Vce, target_Ic)
             Vc, Ve, Vce, Ic = search_point(target_Vce, target_Ic)
             self.test_point_matched.emit(Vc, Ve, Vce, Ic)
 

@@ -28,20 +28,27 @@ class Chart(QtCharts.QChart):
         self.ay.setLabelFormat('%.0gA')
         self.addAxis(self.ax, Qt.AlignmentFlag.AlignBottom)
         self.addAxis(self.ay, Qt.AlignmentFlag.AlignLeft)
+
+        self.traces = []
         self.trace: QtCharts.QLineSeries | None = None
+
         self.curren_point = QtCharts.QScatterSeries(self)
+        self.addSeries(self.curren_point)
+        self.curren_point.attachAxis(self.ay)
+        self.curren_point.attachAxis(self.ax)
         self.curren_point.setName('当前测试点') 
 
     def make_new_trace(self):
-        if self.trace:
-            self.removeSeries(self.trace)
-        line_vce_ic = QtCharts.QLineSeries(self)
-        line_vce_ic.setName('测试值')
+        self.trace = QtCharts.QLineSeries(self)
+        self.trace.setName('测试值')
+        self.addSeries(self.trace)
+        self.trace.attachAxis(self.ax)
+        self.trace.attachAxis(self.ay)
+        self.traces.append(self.trace)
 
-        self.addSeries(line_vce_ic)
-        line_vce_ic.attachAxis(self.ax)
-        line_vce_ic.attachAxis(self.ay)
-        self.trace = line_vce_ic
+    def reset_traces(self):
+        for trace in self.traces:
+            self.removeSeries(trace)
     
     @Slot()
     def add_test_point(self, Vc: float, Ve: float, Vce: float, Ic: float):
@@ -145,7 +152,7 @@ class TestPanel(QtWidgets.QWidget):
         self.ui.btnStop.setEnabled(running)
 
     def reset_chart(self):
-        self.chart_vce_ic.make_new_trace()
+        self.chart_vce_ic.reset_traces()
 
     @Slot()
     def add_npn_results(self, results: NpnResult):
@@ -155,6 +162,10 @@ class TestPanel(QtWidgets.QWidget):
             Vce=results.Vce,
             Ic=results.Ic,
         )
+
+    @Slot()
+    def add_new_trace(self, Vce, Ic):
+        self.chart_vce_ic.make_new_trace()
 
     def save(self):
         return dict(

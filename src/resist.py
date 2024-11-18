@@ -42,14 +42,17 @@ class Resist(QObject):
         self.deleteLater()
 
     def _apply(self):
+        if self.port.bytesAvailable(): self.port.readAll()
         cmd = bytes([0xAA, self.res1, self.res2, 0xFF, 0xFF, 0x55])
         xcmd = cmd.hex(" ")
         log.debug(f'try apply: {xcmd}')
         for _ in range(3):
             self.port.write(cmd)
             if self.port.waitForReadyRead(1000):
-                if self.port.readAll() == cmd:
-                    return True
+                response = self.port.readAll()
+                if not response.contains(cmd):
+                    log.warning(f'回复不匹配: {response}')
+                return True
             time.sleep(0.200)
         return False
 

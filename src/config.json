@@ -2,13 +2,13 @@
     "test": {
         "type": "NPN",
         "Vce": 10.0,
-        "Ic": 10.0,
+        "Ic": 200.0,
         "unitIc": "mA",
-        "Pmax": 10.0,
-        "unitPmax": "mW",
+        "Pmax": 1.13,
+        "unitPmax": "W",
         "hFE": 50,
-        "Vc_max": 20.0,
-        "Ve_max": 20.0
+        "Vc_max": 25.0,
+        "Ve_max": 25.0
     },
     "device": {
         "DMM1": "192.168.31.1",
