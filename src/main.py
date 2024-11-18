@@ -10,16 +10,12 @@ class DebugThread(QThread):
     def run(self):
         debugpy.debug_this_thread()
         return super().run()
-    
+
 class MainWindow(QtWidgets.QMainWindow):
     def __init__(self):
         super().__init__()
         # self.setFixedSize(1280, 720)
         self.setWindowTitle('晶体管安全工作区测试平台')
-
-        style = Path(__file__).with_name('style.qss')
-        with open(style, 'r', encoding='UTF-8') as file:
-            self.setStyleSheet(file.read())
 
         self.io_thread = DebugThread(self)
         self.tab = QtWidgets.QTabWidget(self)
@@ -56,7 +52,7 @@ class MainWindow(QtWidgets.QMainWindow):
         }
         with open(Path(__file__).with_name('config.json'), 'w', encoding='utf-8') as f:
             json.dump(data, f, indent=4, ensure_ascii=False, allow_nan=True)
-    
+
     def load(self):
         data = {}
         config = Path(__file__).with_name('config.json')
@@ -72,7 +68,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.io_thread.start()
         self.show()
         return self
-    
+
     def __exit__(self, *exception):
         self.io_thread.quit()
         self.io_thread.wait()
@@ -97,8 +93,14 @@ class MainWindow(QtWidgets.QMainWindow):
         self.tests.update_running_state(running)
         self.devices.setDisabled(running)
 
-if __name__ == '__main__':
+def main():
+    # QtWidgets.QApplication.setDesktopSettingsAware(False)
     app = QtWidgets.QApplication()
-    with MainWindow() as w:
-        ret = app.exec()
-    exit(ret)
+    style = Path(__file__).with_name('style.qss')
+    with open(style, 'r', encoding='UTF-8') as file:
+        app.setStyleSheet(file.read())
+    with MainWindow():
+        return app.exec()
+
+if __name__ == '__main__':
+    exit(main())

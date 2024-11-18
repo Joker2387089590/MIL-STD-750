@@ -62,7 +62,7 @@ class DevicePanel(QtWidgets.QWidget):
         if port in self.ports:
             self.ui.resist.setCurrentText(port)
         else:
-            self.ui.resist.setCurrentIndex(0)
+            self.ui.resist.setCurrentText('COM3')
 
     def get_devices(self):
         devices = {}

@@ -3,6 +3,10 @@ from PySide6.QtCore import Signal, Slot, Qt
 from .context import Argument, NpnResult, PnpResult
 from .test_ui import Ui_TestPanel
 
+Vce_min = 0.010
+Vce_max = 1000
+Ic_min = 1e-5
+
 def unit(vb: QtWidgets.QDoubleSpinBox, ub: QtWidgets.QComboBox, suffix):
     u = ub.currentText().removesuffix(suffix)
     units = {
@@ -25,24 +29,26 @@ class Chart(QtCharts.QChart):
         self.addAxis(self.ax, Qt.AlignmentFlag.AlignBottom)
         self.addAxis(self.ay, Qt.AlignmentFlag.AlignLeft)
         self.trace: QtCharts.QLineSeries | None = None
-        self.mapping: dict[tuple[float, float], tuple[float, float]] = {}
+        self.curren_point = QtCharts.QScatterSeries(self)
+        self.curren_point.setName('当前测试点') 
 
     def make_new_trace(self):
         if self.trace:
             self.removeSeries(self.trace)
         line_vce_ic = QtCharts.QLineSeries(self)
+        line_vce_ic.setName('测试值')
 
         self.addSeries(line_vce_ic)
         line_vce_ic.attachAxis(self.ax)
         line_vce_ic.attachAxis(self.ay)
         self.trace = line_vce_ic
-        self.mapping = {}
     
     @Slot()
     def add_test_point(self, Vc: float, Ve: float, Vce: float, Ic: float):
-        self.mapping[(Vc, Ve)] = (Vce, Ic)
         if Ic < 1e-5: Ic = 1e-5
         if Vce < 1e-4: Vce = 1e-4
+        self.curren_point.clear()
+        self.curren_point.append(Vce, Ic)
         self.trace.append(Vce, Ic)
 
 class TestPanel(QtWidgets.QWidget):
@@ -108,6 +114,7 @@ class TestPanel(QtWidgets.QWidget):
         Ic_mid = Pmax / Vce
 
         self.target_series = QtCharts.QLineSeries(self.chart_vce_ic)
+        self.target_series.setName('目标值')
         self.target_series.append(0.001, Ic)
         self.target_series.append(Vce_mid, Ic)
         self.target_series.append(Vce, Ic_mid)
@@ -128,6 +135,7 @@ class TestPanel(QtWidgets.QWidget):
             hFE=self.ui.hFE.value(),
             Vc_max=self.ui.maxVc.value(),
             Ve_max=self.ui.maxVe.value(),
+            targets=[]
         )
     
     @Slot()

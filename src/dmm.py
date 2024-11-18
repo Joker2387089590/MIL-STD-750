@@ -1,10 +1,13 @@
-import pyvisa, time, re, math
+import pyvisa, time, re, math, logging
 from typing import Literal
 from pyvisa.resources.tcpip import TCPIPInstrument
 from pyvisa.constants import ResourceAttribute
 
+log = logging.getLogger('DMM')
+
 class Meter:
     def __init__(self, ip: str, func: Literal['VOLTage', 'CURRent']):
+        self.ip = ip
         try:
             rm = pyvisa.ResourceManager()
             self.instr: TCPIPInstrument = rm.open_resource(f'TCPIP::{ip}::INSTR')
@@ -47,7 +50,10 @@ class Meter:
             time.sleep(0.100)
 
     def disconnects(self):
-        self.instr.close()
+        try:
+            self.instr.close()
+        except:
+            log.exception(f'万用表关闭 {self.ip} 失败')
 
     data_points_pattern = re.compile(r'#(\d)(.*)')
 

@@ -1,5 +1,32 @@
+from __future__ import annotations
 import pyvisa, time
 from pyvisa.resources.tcpip import TCPIPInstrument
+
+class _Remote:
+    def __init__(self, power: Power):
+        self.power = power
+
+    def __enter__(self):
+        self.power.instr.write(':SYSTem:REMote')
+
+    def __exit__(self, *exception):
+        try:
+            self.power.instr.write(':SYSTem:LOCal')
+        except:
+            pass
+
+class _Output:
+    def __init__(self, power: Power):
+        self.power = power
+    
+    def __enter__(self):
+        self.power.instr.query('OUTPut:STATe ON;*OPC?')
+    
+    def __exit__(self):
+        try:
+            self.power.instr.write('OUTPut:STATe OFF')
+        except:
+            pass
 
 class Power:
     def __init__(self, ip):
@@ -26,6 +53,12 @@ class Power:
 
     def __exit__(self, *exception):
         self.set_output_state(False)
+
+    def remote(self):
+        return _Remote(self)
+    
+    def output(self):
+        return _Output(self)
     
     def clear_protection(self):
         self.instr.write('OUTPut:PROTection:CLEar')
