@@ -43,5 +43,5 @@ class Resist(QObject):
             exp = int(math.floor(math.log(res, 10)))
             bits = (1 << (exp + 1)) & 0xFF
         bits = ~bits & 0xFF
-        self.port.write(bytes([0xAA, bits, 0xFF, 0xFF, 0xFF, 0x55]))
+        self.port.write(bytes([0xAA, bits, bits, 0xFF, 0xFF, 0x55]))
         self.port.waitForBytesWritten()

@@ -1,7 +1,7 @@
 import json, debugpy
 from pathlib import Path
 from PySide6 import QtCore, QtWidgets
-from PySide6.QtCore import Signal, Slot, QThread
+from PySide6.QtCore import Slot, QThread
 from .context import Context
 from .test import TestPanel
 from .device import DevicePanel
@@ -14,7 +14,7 @@ class DebugThread(QThread):
 class MainWindow(QtWidgets.QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setFixedSize(1280, 720)
+        # self.setFixedSize(1280, 720)
         self.setWindowTitle('晶体管安全工作区测试平台')
 
         style = Path(__file__).with_name('style.qss')
@@ -39,14 +39,9 @@ class MainWindow(QtWidgets.QMainWindow):
         self.context.moveToThread(self.io_thread)
 
         self.tests.startRequested.connect(self.start_test)
-        self.tests.pauseRequested.connect(self.context.pause)
-        self.tests.abortRequested.connect(self.context.abort)
-        # self.devices.connectRequested.connect(self.context.connect_device)
-        # self.devices.disconnectRequested.connect(self.context.disconnect_device)
+        self.tests.abortRequested.connect(self.abort_test)
         self.context.stateChanged.connect(self.update_running_state)
-        # self.context.deviceChanged.connect(self.devices.update_state)
         self.context.npn_tested.connect(self.tests.add_npn_results)
-
         self.context.errorOccurred.connect(self.show_error)
 
         self.update_running_state('pass')
@@ -91,6 +86,10 @@ class MainWindow(QtWidgets.QMainWindow):
         QtCore.QTimer.singleShot(
             0, self.context,
             lambda: self.context.run(arg, dev))
+        
+    @Slot()
+    def abort_test(self):
+        self.context.abort()
 
     @Slot()
     def update_running_state(self, state: str):

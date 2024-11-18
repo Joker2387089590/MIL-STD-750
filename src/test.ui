@@ -373,13 +373,6 @@
            </widget>
           </item>
           <item>
-           <widget class="QPushButton" name="btnPause">
-            <property name="text">
-             <string>暂停</string>
-            </property>
-           </widget>
-          </item>
-          <item>
            <widget class="QPushButton" name="btnStop">
             <property name="text">
              <string>终止</string>

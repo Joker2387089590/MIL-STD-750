@@ -5,15 +5,16 @@ from pyvisa.constants import ResourceAttribute
 
 class Meter:
     def __init__(self, ip: str, func: Literal['VOLTage', 'CURRent']):
-        rm = pyvisa.ResourceManager()
-        self.instr: TCPIPInstrument = rm.open_resource(f'TCPIP::{ip}::INSTR')
+        try:
+            rm = pyvisa.ResourceManager()
+            self.instr: TCPIPInstrument = rm.open_resource(f'TCPIP::{ip}::INSTR')
+        except Exception as e:
+            raise Exception(f'万用表 {ip} 连接失败') from e
         self.instr.set_visa_attribute(ResourceAttribute.timeout_value, 1_000)
         self.func = func
+        self.instr.write('*RST')
 
     def reconfig(self):
-        self.instr.write('*RST')
-        time.sleep(2.000)
-
         cmds = [
             'TRIGger:SOURce IMM',
             'TRIGger:COUNt 1',
@@ -23,7 +24,7 @@ class Meter:
             f'FUNC "{self.func}"',
         ]
         if self.func == 'CURRent':
-            cmds.append('CURRent:DC:RANGe 2mA')
+            cmds.append('CURRent:DC:RANGe 20mA')
         for cmd in cmds:
             self.instr.write(cmd)
             time.sleep(0.100)

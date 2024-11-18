@@ -20,7 +20,7 @@ class Chart(QtCharts.QChart):
         super().__init__()
         self.ax = QtCharts.QLogValueAxis()
         self.ay = QtCharts.QLogValueAxis()
-        self.ax.setLabelFormat('%.0gV')
+        # self.ax.setLabelFormat('%.0gV')
         self.ay.setLabelFormat('%.0gA')
         self.addAxis(self.ax, Qt.AlignmentFlag.AlignBottom)
         self.addAxis(self.ay, Qt.AlignmentFlag.AlignLeft)
@@ -40,9 +40,10 @@ class Chart(QtCharts.QChart):
     
     @Slot()
     def add_test_point(self, Vc: float, Ve: float, Vce: float, Ic: float):
-        if Ic < 1e-4: Ic = 1e-4
-        self.trace.append(Vce, Ic)
         self.mapping[(Vc, Ve)] = (Vce, Ic)
+        if Ic < 1e-5: Ic = 1e-5
+        if Vce < 1e-4: Vce = 1e-4
+        self.trace.append(Vce, Ic)
 
 class TestPanel(QtWidgets.QWidget):
     startRequested = Signal()
@@ -68,7 +69,6 @@ class TestPanel(QtWidgets.QWidget):
             self.startRequested.emit()
 
         ui.btnStart.clicked.connect(try_start)
-        ui.btnPause.clicked.connect(self.pauseRequested.emit)
         ui.btnStop.clicked.connect(self.abortRequested.emit)
 
         ui.Vce.editingFinished.connect(self.check_arguments)
@@ -116,8 +116,8 @@ class TestPanel(QtWidgets.QWidget):
         self.chart_vce_ic.addSeries(self.target_series)
         self.target_series.attachAxis(self.chart_vce_ic.ax)
         self.target_series.attachAxis(self.chart_vce_ic.ay)
-        self.chart_vce_ic.ax.setRange(0.001, Vce * 10)
-        self.chart_vce_ic.ay.setRange(1e-5, Ic * 10)
+        self.chart_vce_ic.ax.setRange(0.1, 1000)
+        self.chart_vce_ic.ay.setRange(5e-5, Ic * 10)
 
     def get_arguments(self):
         return Argument(
@@ -134,7 +134,6 @@ class TestPanel(QtWidgets.QWidget):
     def update_running_state(self, running: bool):
         self.ui.btnStart.setDisabled(running)
         self.ui.wArguments.setDisabled(running)
-        self.ui.btnPause.setEnabled(running)
         self.ui.btnStop.setEnabled(running)
 
     def reset_chart(self):
