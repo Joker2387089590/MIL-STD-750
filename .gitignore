@@ -2,3 +2,4 @@
 *_ui.py
 build/
 .cache/
+all.log

@@ -7,7 +7,7 @@ from .resist import Resist
 from .dmm import Meter
 from .power import PowerCV
 
-log = logging.getLogger('运行')
+log = logging.getLogger(__name__)
 
 @dataclass
 class Argument:
@@ -60,7 +60,8 @@ class PnpResult:
     Re:  str = ''
 
 def as_str(result):
-    return ', '.join(f'{key}={value:.6f}' for key, value in asdict(result).items())
+    ss = lambda v: v if isinstance(v, str) else f'{v:.6f}'
+    return ', '.join(f'{key}={ss(value)}' for key, value in asdict(result).items())
 
 def direction(value, target, range = 0.05):
     if value < target * (1 - range):
@@ -125,7 +126,6 @@ class Context(QObject):
             DMM5=self.DMM5.fetch(),
             Power1=V1,
             Power2=V2,
-            R=self._R,
         )
         return results
     
@@ -174,10 +174,6 @@ class Context(QObject):
             if hasattr(self, 'Power1'): self.Power1.disconnects(); del self.Power1
             if hasattr(self, 'Power2'): self.Power2.disconnects(); del self.Power2
             if hasattr(self, 'R'): self.R.disconnects(); del self.R
-
-    def setup_resist(self, Req):
-        self._R = Req
-        self.R.set_resists(Req)
 
     def run_npn(self):
         caches: dict[tuple[float, float, str, str], tuple[float, float]] = {}

@@ -135,7 +135,7 @@ class TestPanel(QtWidgets.QWidget):
             hFE=self.ui.hFE.value(),
             Vc_max=self.ui.maxVc.value(),
             Ve_max=self.ui.maxVe.value(),
-            targets=[]
+            # targets=[]
         )
     
     @Slot()

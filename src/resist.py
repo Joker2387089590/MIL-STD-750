@@ -2,7 +2,7 @@ import time, math, logging
 from PySide6.QtCore import QObject
 from PySide6.QtSerialPort import QSerialPort, QSerialPortInfo
 
-log = logging.getLogger('电阻箱')
+log = logging.getLogger(__name__)
 
 # TODO: 通过压降计算合适的电阻档位，让电源调节精度提高
 def _resist_bit(res: float | str):

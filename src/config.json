@@ -2,7 +2,7 @@
     "test": {
         "type": "NPN",
         "Vce": 10.0,
-        "Ic": 100.0,
+        "Ic": 10.0,
         "unitIc": "mA",
         "Pmax": 10.0,
         "unitPmax": "mW",

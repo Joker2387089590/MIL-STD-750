@@ -1,4 +1,4 @@
-import json, debugpy
+import sys, json, debugpy, logging
 from pathlib import Path
 from PySide6 import QtCore, QtWidgets
 from PySide6.QtCore import Slot, QThread
@@ -95,10 +95,20 @@ class MainWindow(QtWidgets.QMainWindow):
 
 def main():
     # QtWidgets.QApplication.setDesktopSettingsAware(False)
+    logging.basicConfig(filename='all.log')
+    root = logging.getLogger()
+    handler_out = logging.StreamHandler(sys.stdout)
+    handler_out.setLevel(logging.DEBUG)
+    root.addHandler(handler_out)
+    handler_err = logging.StreamHandler(sys.stderr)
+    handler_err.setLevel(logging.WARNING)
+    root.addHandler(handler_err)
+
     app = QtWidgets.QApplication()
     style = Path(__file__).with_name('style.qss')
     with open(style, 'r', encoding='UTF-8') as file:
         app.setStyleSheet(file.read())
+        
     with MainWindow():
         return app.exec()
 

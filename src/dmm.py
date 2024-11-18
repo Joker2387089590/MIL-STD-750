@@ -3,7 +3,7 @@ from typing import Literal
 from pyvisa.resources.tcpip import TCPIPInstrument
 from pyvisa.constants import ResourceAttribute
 
-log = logging.getLogger('DMM')
+log = logging.getLogger(__name__)
 
 class Meter:
     def __init__(self, ip: str, func: Literal['VOLTage', 'CURRent']):
