@@ -28,18 +28,15 @@
        </widget>
       </item>
       <item>
-       <layout class="QHBoxLayout" name="horizontalLayout_10">
-        <property name="spacing">
-         <number>50</number>
-        </property>
-        <item>
+       <layout class="QFormLayout" name="formLayout">
+        <item row="0" column="0">
          <widget class="QLabel" name="h2_6">
           <property name="text">
            <string>三极管类型</string>
           </property>
          </widget>
         </item>
-        <item>
+        <item row="0" column="1">
          <widget class="QWidget" name="wType" native="true">
           <layout class="QHBoxLayout" name="horizontalLayout_6">
            <property name="leftMargin">
@@ -72,6 +69,26 @@
             </widget>
            </item>
           </layout>
+         </widget>
+        </item>
+        <item row="1" column="0">
+         <widget class="QLabel" name="label">
+          <property name="text">
+           <string>工作时间</string>
+          </property>
+         </widget>
+        </item>
+        <item row="1" column="1">
+         <widget class="QDoubleSpinBox" name="doubleSpinBox">
+          <property name="suffix">
+           <string>s</string>
+          </property>
+          <property name="maximum">
+           <double>99999999.000000000000000</double>
+          </property>
+          <property name="value">
+           <double>1.000000000000000</double>
+          </property>
          </widget>
         </item>
        </layout>
@@ -282,6 +299,13 @@
          <string>参考测试数据</string>
         </attribute>
         <layout class="QGridLayout" name="gridLayout">
+         <item row="3" column="0">
+          <widget class="QPushButton" name="btnApply">
+           <property name="text">
+            <string>使用参考数据进行测试</string>
+           </property>
+          </widget>
+         </item>
          <item row="1" column="0">
           <widget class="QPushButton" name="btnExport">
            <property name="text">
@@ -334,9 +358,9 @@
           </widget>
          </item>
          <item row="2" column="0">
-          <widget class="QPushButton" name="btnApply">
+          <widget class="QPushButton" name="btnImport">
            <property name="text">
-            <string>应用为实际测试</string>
+            <string>导入参考数据</string>
            </property>
           </widget>
          </item>
