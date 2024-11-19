@@ -37,7 +37,7 @@ class Power:
             raise Exception(f'电源 {ip} 连接失败') from e
 
     def reconfig(self):
-        cmds = [':SYSTem:REMote', '*RST', '*WAI']
+        cmds = ['*RST', '*WAI']
         for cmd in cmds: 
             self.instr.write(cmd)
             time.sleep(0.100)

@@ -111,13 +111,13 @@ class Worker(QObject):
             self.setup_devices(dev)
 
             self.stateChanged.emit(True)
-
-            if arg.type == 'NPN':
-                for target_Vce, target_Ic in self.arg.targets:
-                    self.search_npn(target_Vce, target_Ic)
-            else:
-                for target_Vce, target_Ic in self.arg.targets:
-                    self.search_pnp(-target_Vce, target_Ic)
+            with self.Power1.remote(), self.Power2.remote():
+                if arg.type == 'NPN':
+                    for target_Vce, target_Ic in self.arg.targets:
+                        self.search_npn(target_Vce, target_Ic)
+                else:
+                    for target_Vce, target_Ic in self.arg.targets:
+                        self.search_pnp(-target_Vce, target_Ic)
         except Cancellation:
             log.warning('终止测试')
             self.errorOccurred.emit('终止测试')

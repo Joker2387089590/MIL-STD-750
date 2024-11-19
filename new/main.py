@@ -5,6 +5,7 @@ from PySide6.QtCore import Slot, QThread
 from .refer import ReferPanel
 from .device import DevicePanel
 from .worker import Worker
+from .scope import Scope
 from . import global_logger
 
 class DebugThread(QThread):
@@ -23,8 +24,9 @@ class MainWindow(QtWidgets.QMainWindow):
         self.refer = ReferPanel(self.tab)
         self.context = Worker()
 
-        self.tab.addTab(self.refer, '参考测试')
+        self.tab.addTab(self.refer, '测试管理')
         self.tab.addTab(self.devices, '设备管理')
+        self.tab.addTab(Scope(self.tab), '示波器管理')
         self.setCentralWidget(self.tab)
 
         self.context.moveToThread(self.io_thread)
