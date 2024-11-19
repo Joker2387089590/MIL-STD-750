@@ -1,4 +1,4 @@
-import traceback, time, math, logging
+import time, math, logging
 from typing import Literal
 from dataclasses import dataclass, asdict
 from contextlib import ExitStack
@@ -76,7 +76,6 @@ def direction(value, target, range = 0.05):
 
 class Context(QObject):
     stateChanged = Signal(str)
-    deviceChanged = Signal(str, bool)
     npn_tested = Signal(NpnResult)
     pnp_tested = Signal(PnpResult)
     errorOccurred = Signal(str)
@@ -184,16 +183,12 @@ class Context(QObject):
             if hasattr(self, 'R'): self.R.disconnects(); del self.R
 
     def run_npn(self):
-        caches: dict[tuple[float, float, str, str], tuple[float, float]] = {}
-
+        begin = time.time()
         def _test(Vc: float, Ve: float, Re: str, Rc: str):
             if Vc > self.arg.Vc_max: raise Exception('Vc 超出限值')
             if Ve > self.arg.Ve_max: raise Exception('Ve 超出限值')
             if Vc < 0: raise Exception('Vc 匹配失败，请重新测试')
             if Ve < 0: raise Exception('Ve 匹配失败，请重新测试')
-
-            key = (Vc, Ve, Re, Rc)
-            # if key in caches: return caches[key]
 
             results = self._test_no_cache(Vc, Ve)
             xresult = NpnResult(
@@ -207,12 +202,9 @@ class Context(QObject):
                 Rc=Rc,
                 Re=Re,
             )
-            log.info(f'[test:{time.time() - self.begin:.3f}s] {as_str(xresult)}')
+            log.info(f'[test:{time.time() - begin:.3f}s] {as_str(xresult)}')
             self.npn_tested.emit(xresult)
-
-            cache = (xresult.Vce, xresult.Ic)
-            caches[key] = cache
-            return cache
+            return xresult.Vce, xresult.Ic
         
         def search_point(target_Vce: float, target_Ic: float):
             Req = target_Vce / target_Ic

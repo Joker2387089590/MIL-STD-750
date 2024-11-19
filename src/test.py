@@ -130,7 +130,6 @@ class TestPanel(QtWidgets.QWidget):
         self.chart_vce_ic.addSeries(self.target_series)
         self.target_series.attachAxis(self.chart_vce_ic.ax)
         self.target_series.attachAxis(self.chart_vce_ic.ay)
-        self.chart_vce_ic.ax.setRange(0.1, 1000)
         self.chart_vce_ic.ay.setRange(5e-5, Ic * 10)
 
     def get_arguments(self):

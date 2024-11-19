@@ -5,19 +5,10 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "type": "lldb",
-            "request": "launch",
-            "name": "Launch",
-            "program": "${command:cmake.launchTargetPath}",
-            "args": [],
-            "cwd": "${workspaceFolder}",
-            "preLaunchTask": "CMake: 生成"
-        },
-        {
             "name": "Python 调试 main",
             "type": "debugpy",
             "request": "launch",
-            "module": "src.main",
+            "module": "new.main",
             "args": [
                 // "-platform", "windows:darkmode=0"
             ],
