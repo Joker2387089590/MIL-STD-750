@@ -1,4 +1,4 @@
-import sys, debugpy, logging
+import sys, debugpy, logging, json
 from logging.handlers import RotatingFileHandler
 from datetime import datetime
 from pathlib import Path
@@ -9,6 +9,8 @@ from .device import DevicePanel
 from .worker import Worker, log as worker_log
 from .scope import Scope
 from . import global_logger
+
+_config = Path(__file__).with_name('config.json')
 
 class DebugThread(QThread):
     def run(self):
@@ -40,7 +42,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.context.logged.connect(self.logs.appendHtml)
 
     def __enter__(self):
-        # self.load()
+        self.load()
         self.io_thread.start()
         self.show()
         return self
@@ -48,7 +50,7 @@ class MainWindow(QtWidgets.QMainWindow):
     def __exit__(self, *exception):
         self.io_thread.quit()
         self.io_thread.wait()
-        # self.save()
+        self.save()
 
     def start(self):
         self.refer.restart()
@@ -64,9 +66,17 @@ class MainWindow(QtWidgets.QMainWindow):
         self.refer.update_running_state(running)
         self.devices.setDisabled(running)
 
+    def save(self):
+        data = dict(
+            refer=self.refer.save()
+        )
+        with open(_config, 'w', encoding='utf-8') as f:
+            json.dump(data, f, ensure_ascii=False, indent=4)
+
     def load(self):
-        
-        ...
+        with open(_config, 'r', encoding='utf-8') as f:
+            data: dict = json.load(f)
+        self.refer.load(data.get('refer', None))
 
 def config_logs():
     root = logging.getLogger()

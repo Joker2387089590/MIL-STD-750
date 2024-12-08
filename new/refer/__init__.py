@@ -60,7 +60,6 @@ class ReferPanel(QtWidgets.QWidget):
 
     def _setup_args(self):
         self.args: dict[int, Argument] = {}
-        self.current_item: QListWidgetItem | None = None
 
         self.ui.listArgs.itemClicked.connect(self._set_current_args)
         self.ui.btnAddArg.clicked.connect(self._try_add_args)
@@ -75,9 +74,13 @@ class ReferPanel(QtWidgets.QWidget):
             self.form.resize(size)
             self.scene.setSceneRect(QtCore.QRect(QtCore.QPoint(), size))
         return super().eventFilter(watched, event)
+    
+    @property
+    def current_item(self):
+        return self.ui.listArgs.currentItem()
 
     def _set_current_args(self, item: QListWidgetItem):
-        self.current_item = item
+        self.ui.listArgs.setCurrentItem(item)
         arg = self.args[id(item)]
         self.chart.set_targets(arg.targets)
 
@@ -133,7 +136,31 @@ class ReferPanel(QtWidgets.QWidget):
     def update_running_state(self, running: bool):
         self.ui.btnStart.setDisabled(running)
         self.ui.btnStop.setEnabled(running)
+
+    def get_arguments(self):
+        return self.args[id(self.current_item)]
     
+    def save(self):
+        current = self.ui.listArgs.row(self.current_item)
+        items = []
+        for row in range(self.ui.listArgs.count()):
+            item = self.ui.listArgs.item(row)
+            arg = self.args[id(item)]
+            items.append(asdict(arg))
+        return dict(
+            current=current,
+            items=items,
+        )
+    
+    def load(self, data: dict):
+        for d in data.get('items', []):
+            arg = Argument(**d)
+            item = QListWidgetItem()
+            item.setText(arg.name)
+            self.args[id(item)] = arg
+        current = self.ui.listArgs.item(data.get('current', 0))
+        self._set_current_args(current)
+
     @Slot()
     def add_refer(self, data: ReferData):
         tb = self.ui.table
