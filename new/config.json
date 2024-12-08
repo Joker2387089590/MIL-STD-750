@@ -1,0 +1,20 @@
+{
+    "refer": {
+        "current": 0,
+        "items": [
+            {
+                "name": "abc",
+                "type": "NPN",
+                "duration": 1.0,
+                "Vc_max": 200.0,
+                "Ve_max": 200.0,
+                "targets": [
+                    [
+                        120.0,
+                        90.0
+                    ]
+                ]
+            }
+        ]
+    }
+}

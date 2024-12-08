@@ -2,7 +2,14 @@ from typing import Literal
 from dataclasses import dataclass, asdict
 
 @dataclass
-class Argument:
+class Devices:
+    dmms: list[str]
+    power1: str
+    power2: str
+    resist: str
+
+@dataclass
+class ReferArgument:
     name: str
     type: Literal['NPN', 'PNP']
     duration: float
@@ -11,7 +18,7 @@ class Argument:
     targets: list[tuple[float, float]]
 
 @dataclass
-class ReferData:
+class ReferResult:
     target_Vce: float
     target_Ic: float
     Vce: float
@@ -35,3 +42,19 @@ class ReferData:
     
     def dict(self):
         return asdict(self)
+
+@dataclass
+class ExecItem:
+    Vce: float
+    Ic: float
+    Vc: float
+    Ve: float
+    duration: float
+    
+@dataclass
+class ExecArgument:
+    name: str
+    type: Literal['NPN', 'PNP']
+    Vc_max: float
+    Ve_max: float
+    items: list[ExecItem]

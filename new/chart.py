@@ -54,6 +54,7 @@ class Chart(QtCharts.QChart):
         self._add(self.target)
 
         self.traces = []
+        self.trace: TestTrace | None = None
 
     def _add(self, series: QtCharts.QAbstractSeries):
         self.addSeries(series)
@@ -71,17 +72,24 @@ class Chart(QtCharts.QChart):
         top_Ic = 10 ** (math.ceil(math.log10(max_Ic)) + 0.2)
         self.ay.setRange(5e-5, top_Ic)
 
-    def make_new_trace(self):
-        trace = TestTrace(self)
+    def make_trace(self):
+        if self.trace:
+            for marker in self.legend().markers(self.trace):
+                marker.setVisible(False)
+
+        self.trace = trace = TestTrace(self)
         self._add(trace)
         self._add(trace.curren_point)
         self.traces.append(trace)
         return trace
-
-    def hide_markers(self, series: QtCharts.QAbstractSeries):
-        for marker in self.legend().markers(series):
-            marker.setVisible(False)
+    
+    def add_test_point(self, Vce: float, Ic: float):
+        if not self.trace: 
+            _log.error('no trace')
+            return
+        self.trace.add_test_point(Vce, Ic)
 
     def restart(self):
         for trace in self.traces:
             self.removeSeries(trace)
+        self.trace = None
