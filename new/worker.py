@@ -22,13 +22,40 @@ def direction(value, target, range = 0.05):
         return 1
     else:
         return 0
+    
+class _Handler(logging.Handler):
+    def __init__(self, worker: Worker):
+        super().__init__(logging.INFO)
+        self.worker = worker
+        self.setFormatter(logging.Formatter(
+            fmt='[{asctime}.{msecs:03.0f}][{levelname}] {message}',
+            datefmt='%H:%M:%S',
+            style='{'
+        ))
+
+    def emit(self, record):
+        msg = self.format(record)
+
+        if record.levelno >= logging.FATAL:
+            fore, back = 'rgb(255, 255, 255)', 'rgb(190, 0, 0)'
+        elif record.levelno >= logging.ERROR:
+            fore, back = 'rgb(240, 0, 0)', 'rgb(255, 255, 255)'
+        elif record.levelno >= logging.WARNING:
+            fore, back = 'rgb(225, 125, 50)', 'rgb(255, 255, 255)'
+        elif record.levelno >= logging.INFO:
+            fore, back = 'rgb(0, 125, 60)', 'rgb(255, 255, 255)'
+        else:
+            fore, back = 'rgb(54, 96, 146)', 'rgb(255, 255, 255)'
+        
+        html = f'<pre style="color: {fore}; background-color: {back}">{msg}</pre>'
+        self.worker.logged.emit(html)
 
 class Worker(QObject):
     stateChanged = Signal(bool)
     targetStarted = Signal(float, float) # target Vce, target Ic
     pointTested = Signal(float, float) # Vce, Ic
     matched = Signal(ReferData)
-    errorOccurred = Signal(str)
+    logged = Signal(str)
     
     DMM1: Meter
     DMM2: Meter
@@ -43,6 +70,7 @@ class Worker(QObject):
         super().__init__(parent)
         self._mutex = QMutex()
         self._paused = False
+        log.addHandler(_Handler(self))
 
     def check_abort(self):
         with ExitStack() as stack:
@@ -101,39 +129,46 @@ class Worker(QObject):
             if hasattr(self, key):
                 getattr(self, key).reconfig()
 
+    def disconnect_devices(self):
+        if hasattr(self, 'DMM1'): self.DMM1.disconnects(); del self.DMM1
+        if hasattr(self, 'DMM2'): self.DMM2.disconnects(); del self.DMM2
+        if hasattr(self, 'DMM3'): self.DMM3.disconnects(); del self.DMM3
+        if hasattr(self, 'DMM4'): self.DMM4.disconnects(); del self.DMM4
+        if hasattr(self, 'DMM5'): self.DMM5.disconnects(); del self.DMM5
+        if hasattr(self, 'Power1'): self.Power1.disconnects(); del self.Power1
+        if hasattr(self, 'Power2'): self.Power2.disconnects(); del self.Power2
+        if hasattr(self, 'R'): self.R.disconnects(); del self.R
+
     @Slot()
-    def run(self, arg: Argument, dev: dict):
+    def start(self, arg: Argument, dev: dict):
         try:
+            self.run(arg, dev)
+        except Cancellation:
+            log.warning('终止测试')
+        except Exception:
+            log.exception('运行出现错误')
+        finally:
+            self.stateChanged.emit(False)
+
+    def run(self, arg: Argument, dev: dict):
+        with ExitStack() as stack:
             self._paused = False
             self.arg = arg
             self.begin = time.time()
 
             self.setup_devices(dev)
+            stack.callback(self.disconnect_devices)
 
             self.stateChanged.emit(True)
-            with self.Power1.remote(), self.Power2.remote():
-                if arg.type == 'NPN':
-                    for target_Vce, target_Ic in self.arg.targets:
-                        self.search_npn(target_Vce, target_Ic)
-                else:
-                    for target_Vce, target_Ic in self.arg.targets:
-                        self.search_pnp(-target_Vce, target_Ic)
-        except Cancellation:
-            log.warning('终止测试')
-            self.errorOccurred.emit('终止测试')
-        except Exception as e:
-            log.exception('运行出现错误')
-            self.errorOccurred.emit(str(e))
-        finally:
-            if hasattr(self, 'DMM1'): self.DMM1.disconnects(); del self.DMM1
-            if hasattr(self, 'DMM2'): self.DMM2.disconnects(); del self.DMM2
-            if hasattr(self, 'DMM3'): self.DMM3.disconnects(); del self.DMM3
-            if hasattr(self, 'DMM4'): self.DMM4.disconnects(); del self.DMM4
-            if hasattr(self, 'DMM5'): self.DMM5.disconnects(); del self.DMM5
-            if hasattr(self, 'Power1'): self.Power1.disconnects(); del self.Power1
-            if hasattr(self, 'Power2'): self.Power2.disconnects(); del self.Power2
-            if hasattr(self, 'R'): self.R.disconnects(); del self.R
-            self.stateChanged.emit(False)
+            stack.enter_context(self.Power1.remote())
+            stack.enter_context(self.Power2.remote())
+
+            if arg.type == 'NPN':
+                for target_Vce, target_Ic in self.arg.targets:
+                    self.search_npn(target_Vce, target_Ic)
+            else:
+                for target_Vce, target_Ic in self.arg.targets:
+                    self.search_pnp(-target_Vce, target_Ic)
 
     def search_npn(self, target_Vce: float, target_Ic: float):
         Req = target_Vce / target_Ic

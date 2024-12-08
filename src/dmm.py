@@ -115,5 +115,3 @@ class Meter:
         Vce = float(matches[1])
         Ic = float(matches[2])
         return Vce, Ic
-    
-

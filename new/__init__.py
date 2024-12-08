@@ -1,3 +1,3 @@
 import logging
 
-global_logger= logging.getLogger(__name__)
+global_logger = logging.getLogger(__name__)

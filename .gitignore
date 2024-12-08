@@ -3,4 +3,5 @@
 build/
 .cache/
 all.log
+logs/
 log/

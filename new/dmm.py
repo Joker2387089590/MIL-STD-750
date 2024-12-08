@@ -56,7 +56,7 @@ class Meter:
     data_points_pattern = re.compile(r'#(\d)(.*)')
 
     def set_volt_range(self, volt: float):
-        texts = ['200e-3,' '2', '20', '200', '1000']
+        texts = ['200e-3', '2', '20', '200', '1000']
         for t in texts:
             r = float(t)
             if abs(volt) < r * 0.95:
@@ -131,5 +131,3 @@ class Meter:
         Vce = float(matches[1])
         Ic = float(matches[2])
         return Vce, Ic
-    
-

@@ -3,10 +3,12 @@ from dataclasses import dataclass, asdict
 
 @dataclass
 class Argument:
+    name: str
     type: Literal['NPN', 'PNP']
-    targets: list[tuple[float, float]]
+    duration: float
     Vc_max: float
     Ve_max: float
+    targets: list[tuple[float, float]]
 
 @dataclass
 class ReferData:
