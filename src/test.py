@@ -1,3 +1,4 @@
+from dataclasses import astuple
 from PySide6 import QtGui, QtWidgets, QtCharts
 from PySide6.QtCore import Signal, Slot, Qt
 from .context import Argument, NpnResult, PnpResult
@@ -28,9 +29,17 @@ class Chart(QtCharts.QChart):
         self.ay.setLabelFormat('%.0gA')
         self.addAxis(self.ax, Qt.AlignmentFlag.AlignBottom)
         self.addAxis(self.ay, Qt.AlignmentFlag.AlignLeft)
+
         self.trace: QtCharts.QLineSeries | None = None
+
+        from PySide6.QtGui import QPen, QBrush, QColor
         self.curren_point = QtCharts.QScatterSeries(self)
         self.curren_point.setName('当前测试点') 
+        self.curren_point.setColor('purple')
+        self.curren_point.setPen(QPen(QBrush(QColor('purple')), 0.3))
+        self.addSeries(self.curren_point)
+        self.curren_point.attachAxis(self.ax)
+        self.curren_point.attachAxis(self.ay)
 
     def make_new_trace(self):
         if self.trace:
@@ -44,7 +53,7 @@ class Chart(QtCharts.QChart):
         self.trace = line_vce_ic
     
     @Slot()
-    def add_test_point(self, Vc: float, Ve: float, Vce: float, Ic: float):
+    def add_test_point(self, Vce: float, Ic: float):
         if Ic < 1e-5: Ic = 1e-5
         if Vce < 1e-4: Vce = 1e-4
         self.curren_point.clear()
@@ -148,13 +157,20 @@ class TestPanel(QtWidgets.QWidget):
         self.chart_vce_ic.make_new_trace()
 
     @Slot()
-    def add_npn_results(self, results: NpnResult):
-        self.chart_vce_ic.add_test_point(
-            Vc=results.Vc,
-            Ve=results.Ve,
-            Vce=results.Vce,
-            Ic=results.Ic,
-        )
+    def add_npn_results(self, Vce, Ic, results: NpnResult):
+
+        table = self.ui.dataTable
+        row = table.rowCount()
+        table.insertRow(row)
+        for data in enumerate(astuple(results)):
+            ...
+            
+
+        # table.setItem()
+    
+    @Slot()
+    def add_point(self, Vce: float, Ic: float):
+        self.chart_vce_ic.add_test_point(Vce, Ic)
 
     def save(self):
         return dict(

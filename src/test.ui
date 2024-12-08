@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>890</width>
-    <height>493</height>
+    <width>1037</width>
+    <height>546</height>
    </rect>
   </property>
   <layout class="QGridLayout" name="gridLayout">
@@ -339,16 +339,16 @@
      <widget class="QWidget" name="layoutWidget2">
       <layout class="QVBoxLayout" name="verticalLayout">
        <property name="leftMargin">
-        <number>9</number>
+        <number>0</number>
        </property>
        <property name="topMargin">
-        <number>9</number>
+        <number>0</number>
        </property>
        <property name="rightMargin">
-        <number>9</number>
+        <number>0</number>
        </property>
        <property name="bottomMargin">
-        <number>9</number>
+        <number>0</number>
        </property>
        <item>
         <widget class="QWidget" name="wControl" native="true">
@@ -368,7 +368,7 @@
           <item>
            <widget class="QPushButton" name="btnStart">
             <property name="text">
-             <string>开始</string>
+             <string>开始参考测试</string>
             </property>
            </widget>
           </item>
@@ -383,28 +383,133 @@
         </widget>
        </item>
        <item>
-        <widget class="QChartView" name="chartView">
-         <property name="minimumSize">
-          <size>
-           <width>400</width>
-           <height>400</height>
-          </size>
+        <widget class="QTabWidget" name="tabWidget">
+         <property name="currentIndex">
+          <number>1</number>
          </property>
-        </widget>
-       </item>
-       <item>
-        <widget class="QLabel" name="label">
-         <property name="font">
-          <font>
-           <pointsize>12</pointsize>
-          </font>
-         </property>
-         <property name="text">
-          <string>V&lt;sub&gt;ce&lt;/sub&gt;-I&lt;sub&gt;c&lt;/sub&gt;关系图</string>
-         </property>
-         <property name="alignment">
-          <set>Qt::AlignmentFlag::AlignCenter</set>
-         </property>
+         <widget class="QWidget" name="tabWidgetPage1" native="true">
+          <attribute name="title">
+           <string>Vce-Ic关系图</string>
+          </attribute>
+          <layout class="QVBoxLayout" name="verticalLayout_2">
+           <property name="leftMargin">
+            <number>0</number>
+           </property>
+           <property name="topMargin">
+            <number>0</number>
+           </property>
+           <property name="rightMargin">
+            <number>0</number>
+           </property>
+           <property name="bottomMargin">
+            <number>0</number>
+           </property>
+           <item>
+            <widget class="QChartView" name="chartView">
+             <property name="minimumSize">
+              <size>
+               <width>400</width>
+               <height>400</height>
+              </size>
+             </property>
+            </widget>
+           </item>
+          </layout>
+         </widget>
+         <widget class="QWidget" name="tabWidgetPage2" native="true">
+          <attribute name="title">
+           <string>参考测试数据</string>
+          </attribute>
+          <layout class="QVBoxLayout" name="verticalLayout_3">
+           <property name="leftMargin">
+            <number>0</number>
+           </property>
+           <property name="topMargin">
+            <number>0</number>
+           </property>
+           <property name="rightMargin">
+            <number>0</number>
+           </property>
+           <property name="bottomMargin">
+            <number>0</number>
+           </property>
+           <item>
+            <widget class="QTableWidget" name="dataTable">
+             <column>
+              <property name="text">
+               <string>目标Vce</string>
+              </property>
+             </column>
+             <column>
+              <property name="text">
+               <string>目标Ic</string>
+              </property>
+             </column>
+             <column>
+              <property name="text">
+               <string>设置的Vc</string>
+              </property>
+             </column>
+             <column>
+              <property name="text">
+               <string>设置的Ve</string>
+              </property>
+             </column>
+             <column>
+              <property name="text">
+               <string>设置的Rc</string>
+              </property>
+             </column>
+             <column>
+              <property name="text">
+               <string>设置的Re</string>
+              </property>
+             </column>
+             <column>
+              <property name="text">
+               <string>实测Vce</string>
+              </property>
+             </column>
+             <column>
+              <property name="text">
+               <string>实测Ic</string>
+              </property>
+             </column>
+             <column>
+              <property name="text">
+               <string>实测Vcb</string>
+              </property>
+             </column>
+             <column>
+              <property name="text">
+               <string>实测Vbe</string>
+              </property>
+             </column>
+             <column>
+              <property name="text">
+               <string>实测Ie</string>
+              </property>
+             </column>
+            </widget>
+           </item>
+           <item>
+            <widget class="QPushButton" name="btnStartPlay">
+             <property name="enabled">
+              <bool>false</bool>
+             </property>
+             <property name="text">
+              <string>开始实际测试</string>
+             </property>
+            </widget>
+           </item>
+          </layout>
+         </widget>
+         <widget class="QWidget" name="tab">
+          <attribute name="title">
+           <string>实测数据</string>
+          </attribute>
+          <layout class="QVBoxLayout" name="layoutPlay"/>
+         </widget>
         </widget>
        </item>
       </layout>

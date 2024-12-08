@@ -6,6 +6,8 @@ from .context import Context
 from .test import TestPanel
 from .device import DevicePanel
 
+log = logging.getLogger(__name__)
+
 class DebugThread(QThread):
     def run(self):
         debugpy.debug_this_thread()
@@ -37,6 +39,9 @@ class MainWindow(QtWidgets.QMainWindow):
         self.tests.startRequested.connect(self.start_test)
         self.tests.abortRequested.connect(self.abort_test)
         self.context.stateChanged.connect(self.update_running_state)
+
+        self.context.point_tested.connect()
+        
         self.context.npn_tested.connect(self.tests.add_npn_results)
         self.context.errorOccurred.connect(self.show_error)
 
@@ -95,14 +100,15 @@ class MainWindow(QtWidgets.QMainWindow):
 
 def main():
     # QtWidgets.QApplication.setDesktopSettingsAware(False)
-    logging.basicConfig(filename='all.log')
-    root = logging.getLogger()
     handler_out = logging.StreamHandler(sys.stdout)
     handler_out.setLevel(logging.DEBUG)
-    root.addHandler(handler_out)
     handler_err = logging.StreamHandler(sys.stderr)
     handler_err.setLevel(logging.WARNING)
-    root.addHandler(handler_err)
+    logging.basicConfig(
+        filename='all.log',
+        handlers=[handler_out, handler_err],
+    )
+    log.info('start running')
 
     app = QtWidgets.QApplication()
     style = Path(__file__).with_name('style.qss')
