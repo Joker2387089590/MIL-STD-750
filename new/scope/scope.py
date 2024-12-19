@@ -6,7 +6,7 @@ from .scope_ui import Ui_Form
 log = logging.getLogger(__name__)
 
 class Scope(QWidget):
-    def __init__(self, parent: QWidget = None):
+    def __init__(self, parent: QWidget | None = None):
         super().__init__(parent)
         self.ui = Ui_Form()
         self.ui.setupUi(self)

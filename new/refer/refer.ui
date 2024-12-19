@@ -14,56 +14,8 @@
    <item row="1" column="1">
     <widget class="QTabWidget" name="tabWidget">
      <property name="currentIndex">
-      <number>2</number>
+      <number>1</number>
      </property>
-     <widget class="QWidget" name="tab_3">
-      <attribute name="title">
-       <string>流程状态</string>
-      </attribute>
-      <layout class="QFormLayout" name="formLayout">
-       <item row="0" column="0">
-        <widget class="QLabel" name="label_2">
-         <property name="text">
-          <string>连接仪器</string>
-         </property>
-        </widget>
-       </item>
-       <item row="0" column="1">
-        <widget class="QLabel" name="statusDevices">
-         <property name="text">
-          <string>未连接</string>
-         </property>
-        </widget>
-       </item>
-       <item row="2" column="1">
-        <widget class="QLabel" name="statusVce"/>
-       </item>
-       <item row="3" column="0">
-        <widget class="QLabel" name="label_7">
-         <property name="text">
-          <string>Ic</string>
-         </property>
-        </widget>
-       </item>
-       <item row="3" column="1">
-        <widget class="QLabel" name="statusIc"/>
-       </item>
-       <item row="2" column="0">
-        <widget class="QLabel" name="label_6">
-         <property name="text">
-          <string>Vce</string>
-         </property>
-        </widget>
-       </item>
-       <item row="1" column="0" colspan="2">
-        <widget class="QLabel" name="label_4">
-         <property name="text">
-          <string>当前目标</string>
-         </property>
-        </widget>
-       </item>
-      </layout>
-     </widget>
      <widget class="QWidget" name="tab">
       <attribute name="title">
        <string>实时图表</string>
@@ -86,7 +38,7 @@
        <string>数据表</string>
       </attribute>
       <layout class="QGridLayout" name="gridLayout">
-       <item row="0" column="0">
+       <item row="2" column="0">
         <widget class="QTableWidget" name="table">
          <column>
           <property name="text">
@@ -120,6 +72,11 @@
          </column>
          <column>
           <property name="text">
+           <string>Ve-IcRc/V</string>
+          </property>
+         </column>
+         <column>
+          <property name="text">
            <string>设定Rc/Ohm</string>
           </property>
          </column>
@@ -128,6 +85,30 @@
            <string>设定Re/Ohm</string>
           </property>
          </column>
+         <column>
+          <property name="text">
+           <string>Vce稳定时间/s</string>
+          </property>
+         </column>
+         <column>
+          <property name="text">
+           <string>Ic稳定时间/s</string>
+          </property>
+         </column>
+        </widget>
+       </item>
+       <item row="0" column="0">
+        <widget class="QPushButton" name="btnExport">
+         <property name="text">
+          <string>导出此数据表</string>
+         </property>
+        </widget>
+       </item>
+       <item row="1" column="0">
+        <widget class="QPushButton" name="btnClear">
+         <property name="text">
+          <string>清除数据</string>
+         </property>
         </widget>
        </item>
       </layout>

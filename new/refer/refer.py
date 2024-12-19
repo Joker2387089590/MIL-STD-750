@@ -1,5 +1,5 @@
-import logging, json, math, ctypes
-from PySide6 import QtCore, QtGui, QtWidgets, QtCharts
+import logging, csv
+from PySide6 import QtCore, QtGui, QtWidgets
 from PySide6.QtCore import Signal, Slot, Qt, QEvent
 from PySide6.QtWidgets import (
     QGraphicsLinearLayout, QGraphicsScene, QGraphicsWidget, 
@@ -12,17 +12,14 @@ from .refer_ui import Ui_ReferPanel
 
 _log = logging.getLogger(__name__)
 
-def _to_item(item_id: int) -> QListWidgetItem:
-    return ctypes.cast(item_id, QListWidgetItem)
-
 class ReferPanel(QtWidgets.QWidget):
     startRequested = Signal()
     abortRequested = Signal()
+    closed = Signal()
 
     def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
         super().__init__(parent)
         self.ui = ui = Ui_ReferPanel()
-        self.refers: list[ReferResult] = []
 
         ui.setupUi(self)
         self._setup_charts()
@@ -33,6 +30,9 @@ class ReferPanel(QtWidgets.QWidget):
             self.startRequested.emit()
         ui.btnStart.clicked.connect(try_start)
         ui.btnStop.clicked.connect(self.abortRequested.emit)
+
+        ui.btnExport.clicked.connect(self.export_table)
+        ui.btnClear.clicked.connect(self.clear_table)
 
         self.update_running_state(False)
 
@@ -57,6 +57,7 @@ class ReferPanel(QtWidgets.QWidget):
 
     def _setup_args(self):
         self.args: dict[int, ReferArgument] = {}
+        self.items: dict[int, QListWidgetItem] = {}
 
         self.ui.listArgs.itemClicked.connect(self._set_current_args)
         self.ui.btnAddArg.clicked.connect(self._try_add_args)
@@ -86,10 +87,12 @@ class ReferPanel(QtWidgets.QWidget):
     
     def load(self, data: dict):
         for d in data.get('items', []):
-            arg = ReferArgument(**d)
+            arg = ReferArgument.fromdict(d)
             item = QListWidgetItem()
+            xid = id(item)
             item.setText(arg.name)
-            self.args[id(item)] = arg
+            self.args[xid] = arg
+            self.items[xid] = item
             self.ui.listArgs.addItem(item)
 
         current = self.ui.listArgs.item(data.get('current', 0))
@@ -99,22 +102,6 @@ class ReferPanel(QtWidgets.QWidget):
     def current_item(self):
         return self.ui.listArgs.currentItem()
 
-    def _set_current_args(self, item: QListWidgetItem):
-        self.ui.listArgs.setCurrentItem(item)
-        arg = self.args[id(item)]
-        self.chart.set_targets(arg.targets)
-
-    def _try_add_args(self):
-        names = {_to_item(item).text() for item, _ in self.args.items()}
-        panel = ArgumentPanel(names, self)
-        def accept():
-            arg = panel.save()
-            item = QListWidgetItem(arg.name)
-            self.ui.listArgs.addItem(item)
-            self.args[id(item)] = arg
-        panel.accepted.connect(accept)
-        panel.open()
-
     def _show_context_menu(self, point: QtCore.QPoint):
         item = self.ui.listArgs.itemAt(point)
         if not item: return
@@ -123,19 +110,56 @@ class ReferPanel(QtWidgets.QWidget):
         menu.addAction('删除', lambda: self._try_delete(item))
         menu.exec(self.ui.listArgs.mapToGlobal(point))
 
+    def _set_current_args(self, item: QListWidgetItem):
+        self.ui.listArgs.setCurrentItem(item)
+        arg = self.args[id(item)]
+        self.chart.set_targets(arg.targets)
+
+    def _add_args(self, arg: ReferArgument, item: QListWidgetItem):
+        xid = id(item)
+        self.args[xid] = arg
+        self.items[xid] = item
+        self.ui.listArgs.setCurrentItem(item)
+
+    def _try_add_args(self):
+        names = {item.text() for id, item in self.items.items()}
+        panel = ArgumentPanel(names, self)
+        def accept():
+            arg = panel.save()
+            item = QListWidgetItem(arg.name)
+            self._add_args(arg, item)
+            self.ui.listArgs.addItem(item)
+            self._set_current_args(item)
+            self.closed.emit()
+            
+        panel.accepted.connect(accept)
+        panel.open()
+
     def _try_edit(self, item: QListWidgetItem):
         xid = id(item)
-        args = self.args.pop(xid, None)
-        if args is None: return
-        names = {_to_item(i).text() for i, _ in self.args.items()}
+        old_arg = self.args.pop(xid, None)
+        if old_arg is None: return
+
+        xitem = self.items.pop(xid, None)
+        assert xitem is item
+
+        names = {item.text() for id, item in self.items.items()}
         panel = ArgumentPanel(names, self)
 
-        def accept(): self.args[xid] = panel.save()
-        def reject(): self.args[xid] = args
+        def accept():
+            arg = panel.save()
+            item.setText(arg.name)
+            self._add_args(arg, item)
+            self.closed.emit()
+            self._set_current_args(item)
+
+        def reject():
+            self._add_args(old_arg, item)
+            self._set_current_args(item)
 
         panel.accepted.connect(accept)
         panel.rejected.connect(reject)
-        panel.load(args)
+        panel.load(old_arg)
         panel.open()
 
     def _try_delete(self, item: QListWidgetItem):
@@ -144,21 +168,22 @@ class ReferPanel(QtWidgets.QWidget):
             QMessageBox.StandardButton.Yes, QMessageBox.StandardButton.No)
         if ret != QMessageBox.StandardButton.Yes: return
 
-        del self.args[id(item)]
+        xid = id(item)
+        del self.args[xid]
+        del self.items[xid]
         self.ui.listArgs.takeItem(self.ui.listArgs.row(item))
     
     @Slot()
     def update_running_state(self, running: bool):
         self.ui.btnStart.setDisabled(running)
         self.ui.btnStop.setEnabled(running)
+        self.ui.listArgs.setDisabled(running)
 
     def get_arguments(self):
         return self.args[id(self.current_item)]
 
     def restart(self):
         self.chart.restart()
-        self.ui.table.setRowCount(0)
-        self.refers.clear()
 
     def start_target(self):
         self.chart.make_trace()
@@ -172,8 +197,33 @@ class ReferPanel(QtWidgets.QWidget):
         tb.insertRow(row)
         for i, d in enumerate(data.tuple()):
             tb.setItem(row, i, QtWidgets.QTableWidgetItem(d))
-        self.refers.append(data)
+    
+    def export_table(self):
+        path, ok = QtWidgets.QFileDialog.getSaveFileName(
+            self, caption='导出参考数据', filter='CSV(*.csv)')
+        if not ok: return
 
-    def take_refers(self) -> list[ReferResult]:
-        refers, self.refers = self.refers, []
-        return refers
+        columns = range(self.ui.table.columnCount())
+        header = [
+            self.ui.table.horizontalHeaderItem(column).text()
+            for column in columns
+        ]
+        with open(path, 'w') as csvfile:
+            writer = csv.writer(csvfile, dialect='excel', lineterminator='\n')
+            writer.writerow(header)
+            for row in range(self.ui.table.rowCount()):
+                writer.writerow(
+                    self.ui.table.item(row, column).text()
+                    for column in columns
+                )
+        
+    def clear_table(self):
+        ret = QtWidgets.QMessageBox.warning(
+            self, 
+            '清除参考数据表', 
+            '是否清空数据（无法撤销！）',
+            QtWidgets.QMessageBox.StandardButton.Yes,
+            QtWidgets.QMessageBox.StandardButton.Cancel,
+        )
+        if ret == QtWidgets.QMessageBox.StandardButton.Yes:
+            self.ui.table.setRowCount(0)

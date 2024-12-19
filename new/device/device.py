@@ -49,7 +49,12 @@ class DevicePanel(QtWidgets.QScrollArea):
 
     def _refresh_ports(self):
         self.ui.resist.clear()
-        self.ports = [port.portName() for port in QSerialPortInfo.availablePorts()]
+
+        self.ports = []
+        for info in QSerialPortInfo.availablePorts():
+            if info.description() == 'USB Serial Port':
+                self.ports.append(info.portName())
+
         if len(self.ports) == 0: return
         self.ui.resist.addItems(self.ports)
 

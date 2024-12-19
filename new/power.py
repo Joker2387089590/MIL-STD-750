@@ -32,7 +32,9 @@ class Power:
     def __init__(self, ip):
         try:
             rm = pyvisa.ResourceManager()
-            self.instr: TCPIPInstrument = rm.open_resource(f'TCPIP::{ip}::INSTR')
+            instr = rm.open_resource(f'TCPIP::{ip}::INSTR')
+            assert isinstance(instr, TCPIPInstrument)
+            self.instr = instr 
         except Exception as e:
             raise Exception(f'电源 {ip} 连接失败') from e
 
@@ -120,4 +122,5 @@ class PowerCV(Power):
         self.instr.write(f'VOLTage {volt}')
     
     def set_limit_current(self, curr: float):
-        self.instr.write(f'CURRent:LIMit:POSitive {curr}')
+        xcurr = min(curr, 24)
+        self.instr.write(f'CURRent:LIMit:POSitive {xcurr}')

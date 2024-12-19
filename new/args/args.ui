@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>933</width>
-    <height>614</height>
+    <width>982</width>
+    <height>617</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -18,7 +18,7 @@
     <widget class="QScrollArea" name="scrollArea">
      <property name="minimumSize">
       <size>
-       <width>300</width>
+       <width>340</width>
        <height>0</height>
       </size>
      </property>
@@ -30,8 +30,8 @@
        <rect>
         <x>0</x>
         <y>0</y>
-        <width>298</width>
-        <height>565</height>
+        <width>338</width>
+        <height>567</height>
        </rect>
       </property>
       <layout class="QVBoxLayout" name="verticalLayout_4">
@@ -112,11 +112,49 @@
            <property name="suffix">
             <string>s</string>
            </property>
+           <property name="decimals">
+            <number>3</number>
+           </property>
+           <property name="minimum">
+            <double>0.350000000000000</double>
+           </property>
            <property name="maximum">
             <double>99999999.000000000000000</double>
            </property>
+           <property name="singleStep">
+            <double>0.100000000000000</double>
+           </property>
            <property name="value">
             <double>1.000000000000000</double>
+           </property>
+          </widget>
+         </item>
+         <item row="2" column="0">
+          <widget class="QLabel" name="label_8">
+           <property name="text">
+            <string>稳态建立时间</string>
+           </property>
+          </widget>
+         </item>
+         <item row="2" column="1">
+          <widget class="QDoubleSpinBox" name="stableTime">
+           <property name="suffix">
+            <string>s</string>
+           </property>
+           <property name="decimals">
+            <number>3</number>
+           </property>
+           <property name="minimum">
+            <double>0.350000000000000</double>
+           </property>
+           <property name="maximum">
+            <double>99999999.000000000000000</double>
+           </property>
+           <property name="singleStep">
+            <double>0.100000000000000</double>
+           </property>
+           <property name="value">
+            <double>10.000000000000000</double>
            </property>
           </widget>
          </item>
@@ -127,15 +165,15 @@
          <property name="horizontalSpacing">
           <number>50</number>
          </property>
-         <item row="1" column="0">
+         <item row="3" column="0">
           <widget class="QLabel" name="h2_12">
            <property name="text">
-            <string>V&lt;sub&gt;C&lt;/sub&gt;</string>
+            <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;V&lt;span style=&quot; vertical-align:sub;&quot;&gt;CEO&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
            </property>
           </widget>
          </item>
-         <item row="1" column="1">
-          <widget class="QDoubleSpinBox" name="maxVc">
+         <item row="3" column="1">
+          <widget class="QDoubleSpinBox" name="Vceo">
            <property name="font">
             <font>
              <pointsize>12</pointsize>
@@ -148,7 +186,70 @@
             <number>2</number>
            </property>
            <property name="maximum">
-            <double>10000000.000000000000000</double>
+            <double>350.000000000000000</double>
+           </property>
+           <property name="value">
+            <double>200.000000000000000</double>
+           </property>
+          </widget>
+         </item>
+         <item row="4" column="0">
+          <widget class="QLabel" name="h2_13">
+           <property name="text">
+            <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;V&lt;span style=&quot; vertical-align:sub;&quot;&gt;CBO&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+           </property>
+          </widget>
+         </item>
+         <item row="4" column="1">
+          <widget class="QDoubleSpinBox" name="Vcbo">
+           <property name="font">
+            <font>
+             <pointsize>12</pointsize>
+            </font>
+           </property>
+           <property name="suffix">
+            <string>V</string>
+           </property>
+           <property name="decimals">
+            <number>2</number>
+           </property>
+           <property name="maximum">
+            <double>350.000000000000000</double>
+           </property>
+           <property name="value">
+            <double>200.000000000000000</double>
+           </property>
+          </widget>
+         </item>
+         <item row="0" column="0" colspan="2">
+          <widget class="QLabel" name="h1_3">
+           <property name="text">
+            <string>输出限制</string>
+           </property>
+          </widget>
+         </item>
+         <item row="5" column="0">
+          <widget class="QLabel" name="h2_14">
+           <property name="text">
+            <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;V&lt;span style=&quot; vertical-align:sub;&quot;&gt;EBO&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+           </property>
+          </widget>
+         </item>
+         <item row="5" column="1">
+          <widget class="QDoubleSpinBox" name="Vebo">
+           <property name="font">
+            <font>
+             <pointsize>12</pointsize>
+            </font>
+           </property>
+           <property name="suffix">
+            <string>V</string>
+           </property>
+           <property name="decimals">
+            <number>2</number>
+           </property>
+           <property name="maximum">
+            <double>350.000000000000000</double>
            </property>
            <property name="value">
             <double>200.000000000000000</double>
@@ -156,9 +257,9 @@
           </widget>
          </item>
          <item row="2" column="0">
-          <widget class="QLabel" name="h2_13">
+          <widget class="QLabel" name="h2_15">
            <property name="text">
-            <string>V&lt;sub&gt;E&lt;/sub&gt;</string>
+            <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;最大V&lt;span style=&quot; vertical-align:sub;&quot;&gt;E&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
            </property>
           </widget>
          </item>
@@ -176,17 +277,38 @@
             <number>2</number>
            </property>
            <property name="maximum">
-            <double>10000000.000000000000000</double>
+            <double>350.000000000000000</double>
            </property>
            <property name="value">
             <double>200.000000000000000</double>
            </property>
           </widget>
          </item>
-         <item row="0" column="0" colspan="2">
-          <widget class="QLabel" name="h1_3">
+         <item row="1" column="0">
+          <widget class="QLabel" name="h2_16">
            <property name="text">
-            <string>输出限制</string>
+            <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;最大V&lt;span style=&quot; vertical-align:sub;&quot;&gt;C&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+           </property>
+          </widget>
+         </item>
+         <item row="1" column="1">
+          <widget class="QDoubleSpinBox" name="maxVc">
+           <property name="font">
+            <font>
+             <pointsize>12</pointsize>
+            </font>
+           </property>
+           <property name="suffix">
+            <string>V</string>
+           </property>
+           <property name="decimals">
+            <number>2</number>
+           </property>
+           <property name="maximum">
+            <double>350.000000000000000</double>
+           </property>
+           <property name="value">
+            <double>200.000000000000000</double>
            </property>
           </widget>
          </item>
@@ -200,7 +322,7 @@
         </widget>
        </item>
        <item>
-        <layout class="QHBoxLayout" name="horizontalLayout_11" stretch="1,1,0">
+        <layout class="QHBoxLayout" name="horizontalLayout_11" stretch="1,1,1,1,1,0">
          <item>
           <widget class="QLabel" name="label_2">
            <property name="text">
@@ -215,6 +337,36 @@
           <widget class="QLabel" name="label_3">
            <property name="text">
             <string>Ic/mA</string>
+           </property>
+           <property name="alignment">
+            <set>Qt::AlignmentFlag::AlignCenter</set>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QLabel" name="label_5">
+           <property name="text">
+            <string>Rc/Ohm</string>
+           </property>
+           <property name="alignment">
+            <set>Qt::AlignmentFlag::AlignCenter</set>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QLabel" name="label_6">
+           <property name="text">
+            <string>Re/Ohm</string>
+           </property>
+           <property name="alignment">
+            <set>Qt::AlignmentFlag::AlignCenter</set>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QLabel" name="label_7">
+           <property name="text">
+            <string>参考电阻</string>
            </property>
            <property name="alignment">
             <set>Qt::AlignmentFlag::AlignCenter</set>

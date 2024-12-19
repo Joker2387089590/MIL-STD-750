@@ -3,14 +3,18 @@ from typing import Protocol
 from logging.handlers import RotatingFileHandler
 from datetime import datetime
 from pathlib import Path
+import matplotlib.pyplot as plt
+import numpy as np
 from PySide6 import QtWidgets
 from PySide6.QtCore import QThread, Signal, Slot, QTimer
+
 from .types import *
 from .refer import ReferPanel
 from .exec import ExecPanel
 from .device import DevicePanel
 from .worker import Worker
 from .scope import Scope
+from .dmm import plot
 from . import global_logger
 
 _log = logging.getLogger(__name__)
@@ -18,11 +22,8 @@ _config = Path(__file__).with_name('config.json')
 
 class Common(Protocol):
     def update_running_state(self, running: bool): ...
-    def restart(self): ...
     def start_target(self): ...
-    def add_test_point(self, Vce: float, Ic: float): ...
-    def add_refer(self, data: ReferResult): ...
-    def take_refers(self) -> list[ReferResult]: ...
+    def setDisabled(self, arg__1: bool): ...
     
 class UiHandler(logging.Handler):
     def __init__(self, signal):
@@ -81,17 +82,32 @@ class MainWindow(QtWidgets.QMainWindow):
 
         self.refer.startRequested.connect(self.start_refer)
         self.refer.abortRequested.connect(self.abort)
+        self.refer.closed.connect(self.save)
+
+        self.exec.startRequested.connect(self.start_exec)
+        self.exec.abortRequested.connect(self.abort)
+
         self.context.stateChanged.connect(self.update_running_state)
         self.context.logged.connect(self.logs.appendHtml)
+        self.context.targetStarted.connect(self.start_target)
+        self.context.referTested.connect(self.add_refer)
+        self.context.referComplete.connect(self.exec.receive_refer_all_results)
+        self.context.execTested.connect(self.receive_exec)
+        self.context.plots.connect(self.plot)
+        self.context.message.connect(self.message)
 
         self.common: Common | None = None
 
         self.config_logs()
 
+    def plot(self, results, name, type):
+        plot(results, name, type)
+        pass
+
     def config_logs(self):
         root = logging.getLogger()
         root.setLevel(logging.DEBUG)
-        global_logger.setLevel(logging.DEBUG)
+        global_logger.setLevel(logging.INFO)
 
         console_fmt = logging.Formatter(
             fmt='[{asctime}.{msecs:03.0f}][{levelname}][{module}:{lineno}] {message}',
@@ -155,17 +171,46 @@ class MainWindow(QtWidgets.QMainWindow):
         def run(): self.context.start(arg, dev)
         QTimer.singleShot(0, self.context, run)
 
+    def start_target(self):
+        if self.common:
+            self.common.start_target()
+
+    def add_refer(self, result: ReferResult):
+        self.refer.add_refer(result)
+        self.refer.add_test_point(abs(result.Vce), result.Ic)
+        if 0:
+            fig, (axv, axi) = plt.subplots(2, 1)
+            axv.plot(result.all_vce, label='Vce')
+            axv.plot(result.all_dmm2, label='Vbe(NPN)/Vcb(PNP)')
+            axv.plot(result.all_dmm3, label='Vcb(NPN)/Veb(PNP)')
+            axi.plot(result.all_ic, label='Ic')
+            axi.plot(result.all_ie, label='Ie')
+            fig.show()
+
+    def receive_exec(self, exec: ExecResult):
+        self.exec.receive_exec_result(exec)
+
     def abort(self):
         self.context.abort()
 
     def update_running_state(self, running: bool):
-        self.refer.update_running_state(running)
+        for c in [self.refer, self.exec]:
+            c: Common
+            if c is self.common:
+                assert self.common is not None
+                self.common.update_running_state(running)
+            else:
+                c.setDisabled(running)
         self.devices.setDisabled(running)
+
+    def message(self, msg):
+        QtWidgets.QMessageBox.information(self, '信息', msg)
 
     def save(self):
         data = dict(
             refer=self.refer.save(),
             devices=self.devices.save(),
+            exec=self.exec.save(),
         )
         with open(_config, 'w', encoding='utf-8') as f:
             json.dump(data, f, ensure_ascii=False, indent=4)
@@ -176,8 +221,9 @@ class MainWindow(QtWidgets.QMainWindow):
         if _config.exists():
             with open(_config, 'r', encoding='utf-8') as f:
                 data: dict = json.load(f)
-            self.refer.load(data.get('refer', None))
-            self.devices.load(data.get('devices', None))
+            self.refer.load(data.get('refer', {}))
+            self.devices.load(data.get('devices', {}))
+            self.exec.load(data.get('exec', {}))
             _log.info('已加载上次运行的配置')
 
 def main():

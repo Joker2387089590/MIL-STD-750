@@ -2,10 +2,11 @@ from __future__ import annotations
 import logging, math
 from PySide6 import QtCharts
 from PySide6.QtCore import Qt
+from .types import ReferTarget
 
 _log = logging.getLogger(__name__)
 _min_Vce, _max_Vce = 10 ** -1.05, 10 ** 3.05
-_min_Ic = 10e-3
+_min_Ic = 10e-6
 
 class TestTrace(QtCharts.QLineSeries):
     def __init__(self, chart: Chart):
@@ -15,8 +16,10 @@ class TestTrace(QtCharts.QLineSeries):
         self.curren_point.setName('实测点')
 
     def add_test_point(self, Vce: float, Ic: float):
-        Ic = max(_min_Ic, Ic)
-        Vce = max(_min_Vce, Vce)
+        chart = self.chart()
+        if not isinstance(chart, Chart): return
+        Ic = max(chart.ay.min(), Ic)
+        Vce = max(chart.ax.min(), Vce)
         self.curren_point.clear()
         self.curren_point.append(Vce, Ic)
         self.append(Vce, Ic)
@@ -53,7 +56,7 @@ class Chart(QtCharts.QChart):
         self.target.setName('目标测试点')
         self._add(self.target)
 
-        self.traces = []
+        self.traces: list[TestTrace] = []
         self.trace: TestTrace | None = None
 
     def _add(self, series: QtCharts.QAbstractSeries):
@@ -61,10 +64,11 @@ class Chart(QtCharts.QChart):
         series.attachAxis(self.ax)
         series.attachAxis(self.ay)
 
-    def set_targets(self, targets: list[tuple[float, float]]):
+    def set_targets(self, targets: list[ReferTarget]):
         self.target.clear()
         Ics = [10e-3]
-        for Vce, Ic in targets:
+        for t in targets:
+            Vce, Ic = t.Vce, t.Ic
             if Vce <= 0 or Ic <= 0: continue
             self.target.append(Vce, Ic)
             Ics.append(Ic)
@@ -91,5 +95,7 @@ class Chart(QtCharts.QChart):
 
     def restart(self):
         for trace in self.traces:
+            self.removeSeries(trace.curren_point)
             self.removeSeries(trace)
+            
         self.trace = None

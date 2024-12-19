@@ -48,25 +48,43 @@
       </widget>
      </item>
      <item>
-      <widget class="QScrollArea" name="scrollArea">
-       <property name="widgetResizable">
-        <bool>true</bool>
+      <widget class="QTabWidget" name="tabWidget">
+       <property name="currentIndex">
+        <number>0</number>
        </property>
-       <widget class="QWidget" name="scrollAreaWidgetContents">
-        <property name="geometry">
-         <rect>
-          <x>0</x>
-          <y>0</y>
-          <width>559</width>
-          <height>486</height>
-         </rect>
-        </property>
-        <layout class="QVBoxLayout" name="verticalLayout">
-         <item>
-          <widget class="QChartView" name="chartView"/>
-         </item>
-         <item>
-          <widget class="QTableWidget" name="table"/>
+       <widget class="QWidget" name="tab_2">
+        <attribute name="title">
+         <string>数据表</string>
+        </attribute>
+        <layout class="QGridLayout" name="gridLayout_2">
+         <item row="0" column="0">
+          <widget class="QTableWidget" name="table">
+           <column>
+            <property name="text">
+             <string>Vce</string>
+            </property>
+           </column>
+           <column>
+            <property name="text">
+             <string>Vbe(NPN)/Vbc(PNP)</string>
+            </property>
+           </column>
+           <column>
+            <property name="text">
+             <string>Vcb(NPN)/Veb(PNP)</string>
+            </property>
+           </column>
+           <column>
+            <property name="text">
+             <string>Ic</string>
+            </property>
+           </column>
+           <column>
+            <property name="text">
+             <string>Ie</string>
+            </property>
+           </column>
+          </widget>
          </item>
         </layout>
        </widget>
@@ -76,13 +94,6 @@
    </item>
   </layout>
  </widget>
- <customwidgets>
-  <customwidget>
-   <class>QChartView</class>
-   <extends>QGraphicsView</extends>
-   <header location="global">QChartView</header>
-  </customwidget>
- </customwidgets>
  <resources/>
  <connections/>
 </ui>

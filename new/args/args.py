@@ -1,9 +1,10 @@
-import logging
+import logging, math
 from PySide6 import QtGui, QtWidgets
 from PySide6.QtCore import Signal, Slot, Qt
 from PySide6.QtWidgets import QWidget, QDialog, QMessageBox
 from ..types import *
 from ..chart import Chart
+from ..resist import values
 from .args_ui import Ui_ArgumentPanel
 
 _log = logging.getLogger(__name__)
@@ -26,23 +27,55 @@ class Target(QWidget):
         self.Ic.editingFinished.connect(self.changed)
         layout.addWidget(self.Ic, 1)
 
+        Rs = ['0', '1', '10', '100', '1k', '10k', '100k']
+
+        self.Rc = QtWidgets.QComboBox(self)
+        self.Rc.addItems(Rs)
+        self.Rc.activated.connect(self.changed)
+        layout.addWidget(self.Rc, 1)
+        
+        self.Re = QtWidgets.QComboBox(self)
+        self.Re.addItems(Rs)
+        self.Re.activated.connect(self.changed)
+        layout.addWidget(self.Re, 1)
+
+        self.Rx = QtWidgets.QLabel(self)
+        self.Ic.valueChanged.connect(self.update_rx)
+        layout.addWidget(self.Rx, 1)
+        
         self.remove = QtWidgets.QToolButton(self)
         self.remove.setText('-')
         layout.addWidget(self.remove)
 
-    def read(self):
-        return self.Vce.value(), self.Ic.value() * 1e-3
+    def update_rx(self, ic: float):
+        Vce = self.Vce.value()
+        ic = self.Ic.value() * 1e-3
+        if Vce < 15:
+            minR, maxR = 1 / ic,  30 / ic
+        else:
+            minR, maxR = 3 / ic,  30 / ic
+
+        exp = int(math.ceil(math.log10(minR)))
+        value = int(10 ** exp) if exp >= 0 else 0
+        rx = values.get(value, '')
+        self.Rx.setText(rx)
     
     def save(self):
-        return self.Vce.value(), self.Ic.value()
+        return ReferTarget(
+            self.Vce.value(), 
+            self.Ic.value() * 1e-3,
+            self.Rc.currentText(),
+            self.Re.currentText(),
+        )
     
-    def load(self, data: tuple[float, float]):
-        v, i = data
-        self.Vce.setValue(v)
-        self.Ic.setValue(i)
+    def load(self, data: ReferTarget):
+        self.Vce.setValue(data.Vce)
+        self.Ic.setValue(data.Ic * 1000)
+        self.Rc.setCurrentText(data.Rc)
+        self.Re.setCurrentText(data.Re)
 
 class ArgumentPanel(QDialog):
-    def __init__(self, names: set[str], parent: QWidget = None):
+    def __init__(self, names: set[str], parent: QWidget | None = None):
         super().__init__(parent)
 
         self.ui = ui = Ui_ArgumentPanel()
@@ -65,11 +98,6 @@ class ArgumentPanel(QDialog):
         self.ui.layoutTargets.addWidget(target)
         self.targets.append(target)
         return target
-
-    def load_target(self, data: tuple[float, float]):
-        target: Target = self.add_target()
-        target.Vce.setValue(data[0])
-        target.Ic.setValue(data[1])
     
     def remove_target(self, target: Target):
         if target in self.targets:
@@ -78,10 +106,15 @@ class ArgumentPanel(QDialog):
         self.update_targets()
 
     def get_targets(self):
-        targets: list[tuple[float, float]] = []
-        for target in self.targets: targets.append(target.read())
+        targets: list[ReferTarget] = []
+        for target in self.targets: 
+            targets.append(target.save())
         _log.debug(f'{targets = }')
         return targets
+
+    def load_target(self, data: ReferTarget):
+        target: Target = self.add_target()
+        target.load(data)
 
     @Slot()
     def update_targets(self):
@@ -92,6 +125,7 @@ class ArgumentPanel(QDialog):
             name=self.ui.name.text(),
             type='NPN' if self.ui.radioNPN.isChecked() else 'PNP',
             duration=self.ui.duration.value(),
+            stable_duration=self.ui.stableTime.value(),
             Vc_max=self.ui.maxVc.value(),
             Ve_max=self.ui.maxVe.value(),
             targets=[t.save() for t in self.targets],
@@ -99,6 +133,8 @@ class ArgumentPanel(QDialog):
 
     def load(self, data: ReferArgument):
         self.ui.name.setText(data.name)
+        self.ui.duration.setValue(data.duration)
+        self.ui.stableTime.setValue(data.stable_duration)
         
         if data.type == 'NPN':
             self.ui.radioNPN.setChecked(True)
@@ -121,6 +157,14 @@ class ArgumentPanel(QDialog):
             return
         return super().accept()
     
-    def keyPressEvent(self, event: QtGui.QKeyEvent):
+    def reject(self):
+        ret = QMessageBox.warning(
+            self, '参数编辑', '是否放弃修改?', 
+            QMessageBox.StandardButton.Yes,
+            QMessageBox.StandardButton.No)
+        if ret == QMessageBox.StandardButton.Yes:
+            return super().reject()
+    
+    def keyPressEvent(self, event: QtGui.QKeyEvent): # type: ignore
         if event.key() in (Qt.Key.Key_Enter, Qt.Key.Key_Return): return
         return super().keyPressEvent(event)
