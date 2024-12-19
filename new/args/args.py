@@ -45,11 +45,14 @@ class Target(QWidget):
         
         self.remove = QtWidgets.QToolButton(self)
         self.remove.setText('-')
+        self.remove.setFixedSize(30, 30)
         layout.addWidget(self.remove)
 
     def update_rx(self, ic: float):
         Vce = self.Vce.value()
         ic = self.Ic.value() * 1e-3
+        if Vce <= 0 or ic <= 0: return
+
         if Vce < 15:
             minR, maxR = 1 / ic,  30 / ic
         else:
@@ -128,6 +131,9 @@ class ArgumentPanel(QDialog):
             stable_duration=self.ui.stableTime.value(),
             Vc_max=self.ui.maxVc.value(),
             Ve_max=self.ui.maxVe.value(),
+            Vceo=self.ui.Vceo.value(),
+            Vebo=self.ui.Vebo.value(),
+            Vcbo=self.ui.Vcbo.value(),
             targets=[t.save() for t in self.targets],
         )
 

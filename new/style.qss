@@ -1,36 +1,48 @@
-QPalette{background:#EAF7FF;}*{outline:0px;color:#386487;}
-
-QGraphicsView{
-border:1px solid #C0DCF2;
-qproperty-backgroundBrush:#EAF7FF;
+QPalette {
+	background:#EAF7FF;
 }
 
-QWidget[form="true"],QLabel[frameShape="1"],QGraphicsView{
-border:1px solid #C0DCF2;
-border-radius:0px;
+* {
+	outline: 0px;
+	color: #386487;
 }
 
-QWidget[form="bottom"]{
-background:#DEF0FE;
+QGraphicsView {
+	border: 1px solid #C0DCF2;
+	qproperty-backgroundBrush: #EAF7FF;
+}
+
+QWidget[form="true"],
+QLabel[frameShape="1"],
+QGraphicsView {
+	border:1px solid #C0DCF2;
+	border-radius:0px;
+}
+
+QWidget[form="bottom"] {
+	background: #DEF0FE;
 }
 
 QWidget[form="bottom"] .QFrame{
-border:1px solid #386487;
+	border: 1px solid #386487;
 }
 
-QWidget[form="bottom"] QLabel,QWidget[form="title"] QLabel{
-border-radius:0px;
-color:#386487;
-background:none;
-border-style:none;
+QWidget[form="bottom"] QLabel,
+QWidget[form="title"] QLabel {
+	border-radius:0px;
+	color:#386487;
+	background:none;
+	border-style:none;
 }
 
-QWidget[form="title"],QWidget[nav="left"],QWidget[nav="top"] QAbstractButton{
-border-style:none;
-border-radius:0px;
-padding:5px;
-color:#386487;
-background:qlineargradient(spread:pad,x1:0,y1:0,x2:0,y2:1,stop:0 #DEF0FE,stop:1 #C0DEF6);
+QWidget[form="title"],
+QWidget[nav="left"],
+QWidget[nav="top"] QAbstractButton {
+	border-style: none;
+	border-radius: 0px;
+	padding: 5px;
+	color:#386487;
+	background: qlineargradient(spread:pad,x1:0,y1:0,x2:0,y2:1,stop:0 #DEF0FE,stop:1 #C0DEF6);
 }
 
 QWidget[nav="top"] QAbstractButton:hover,QWidget[nav="top"] QAbstractButton:pressed,QWidget[nav="top"] QAbstractButton:checked{
@@ -77,13 +89,13 @@ QLineEdit:read-only{
 background-color:#DEF0FE;
 }
 
-QLineEdit,QTextEdit,QPlainTextEdit,QSpinBox,QDoubleSpinBox,QComboBox,QDateEdit,QTimeEdit,QDateTimeEdit{
-border:1px solid #C0DCF2;
-border-radius:3px;
-padding:2px;
-background:none;
-selection-background-color:#386488;
-selection-color:#FFFFFF;
+QLineEdit,QTextEdit,QPlainTextEdit,QSpinBox,QDoubleSpinBox,QComboBox,QDateEdit,QTimeEdit,QDateTimeEdit {
+	border: 1px solid #C0DCF2;
+	border-radius: 3px;
+	padding: 2px;
+	background: none;
+	selection-background-color: #386488;
+	selection-color: #FFFFFF;
 }
 
 QLineEdit:focus,QTextEdit:focus,QPlainTextEdit:focus,QSpinBox:focus,QDoubleSpinBox:focus,QComboBox:focus,QDateEdit:focus,QTimeEdit:focus,QDateTimeEdit:focus,QLineEdit:hover,QTextEdit:hover,QPlainTextEdit:hover,QSpinBox:hover,QDoubleSpinBox:hover,QComboBox:hover,QDateEdit:hover,QTimeEdit:hover,QDateTimeEdit:hover{
@@ -222,13 +234,13 @@ height:10px;
 padding:0px 5px 2px 0px;
 } */
 
-QTimeEdit::up-button:pressed,QDateEdit::up-button:pressed,QDateTimeEdit::up-button:pressed,QDoubleSpinBox::up-button:pressed,QSpinBox::up-button:pressed{
+/* QTimeEdit::up-button:pressed,QDateEdit::up-button:pressed,QDateTimeEdit::up-button:pressed,QDoubleSpinBox::up-button:pressed,QSpinBox::up-button:pressed{
 top:-2px;
-}
+} */
   
-QTimeEdit::down-button:pressed,QDateEdit::down-button:pressed,QDateTimeEdit::down-button:pressed,QDoubleSpinBox::down-button:pressed,QSpinBox::down-button:pressed,QSpinBox::down-button:pressed{
+/* QTimeEdit::down-button:pressed,QDateEdit::down-button:pressed,QDateTimeEdit::down-button:pressed,QDoubleSpinBox::down-button:pressed,QSpinBox::down-button:pressed,QSpinBox::down-button:pressed{
 bottom:-2px;
-}
+} */
 
 /* QComboBox::down-arrow,QDateEdit[calendarPopup="true"]::down-arrow,QTimeEdit[calendarPopup="true"]::down-arrow,QDateTimeEdit[calendarPopup="true"]::down-arrow{
 image:url(:/qss/lightblue/add_bottom.png);
@@ -638,19 +650,19 @@ padding:0px;
 margin:0px;
 }
 
-QTableView QLineEdit,QTableView QComboBox,QTableView QSpinBox,QTableView QDoubleSpinBox,QTableView QDateEdit,QTableView QTimeEdit,QTableView QDateTimeEdit{
+/* QTableView QLineEdit,QTableView QComboBox,QTableView QSpinBox,QTableView QDoubleSpinBox,QTableView QDateEdit,QTableView QTimeEdit,QTableView QDateTimeEdit{
 border-width:0px;
 border-radius:0px;
-}
+} */
 
-QTableView QLineEdit:focus,QTableView QComboBox:focus,QTableView QSpinBox:focus,QTableView QDoubleSpinBox:focus,QTableView QDateEdit:focus,QTableView QTimeEdit:focus,QTableView QDateTimeEdit:focus{
+/* QTableView QLineEdit:focus,QTableView QComboBox:focus,QTableView QSpinBox:focus,QTableView QDoubleSpinBox:focus,QTableView QDateEdit:focus,QTableView QTimeEdit:focus,QTableView QDateTimeEdit:focus{
 border-width:0px;
 border-radius:0px;
-}
+} */
 
-QLineEdit,QTextEdit,QPlainTextEdit,QSpinBox,QDoubleSpinBox,QComboBox,QDateEdit,QTimeEdit,QDateTimeEdit{
+/* QLineEdit,QTextEdit,QPlainTextEdit,QSpinBox,QDoubleSpinBox,QComboBox,QDateEdit,QTimeEdit,QDateTimeEdit{
 background:#EAF7FF;
-}
+} */
 
 QTabWidget::pane:top{top:-1px;}
 QTabWidget::pane:bottom{bottom:-1px;}

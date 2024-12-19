@@ -18,7 +18,7 @@
     <widget class="QScrollArea" name="scrollArea">
      <property name="minimumSize">
       <size>
-       <width>340</width>
+       <width>550</width>
        <height>0</height>
       </size>
      </property>
@@ -30,8 +30,8 @@
        <rect>
         <x>0</x>
         <y>0</y>
-        <width>338</width>
-        <height>567</height>
+        <width>548</width>
+        <height>568</height>
        </rect>
       </property>
       <layout class="QVBoxLayout" name="verticalLayout_4">
@@ -375,10 +375,16 @@
          </item>
          <item>
           <widget class="QToolButton" name="btnAdd">
+           <property name="minimumSize">
+            <size>
+             <width>30</width>
+             <height>30</height>
+            </size>
+           </property>
            <property name="maximumSize">
             <size>
-             <width>50</width>
-             <height>50</height>
+             <width>30</width>
+             <height>30</height>
             </size>
            </property>
            <property name="text">

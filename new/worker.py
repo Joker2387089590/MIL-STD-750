@@ -3,7 +3,6 @@ import time, math, logging, asyncio
 from dataclasses import dataclass
 from typing import Callable
 from contextlib import ExitStack
-from collections import Counter
 import numpy as np
 from PySide6.QtCore import QObject, Signal, Slot, QMutex
 from .types import *
@@ -17,10 +16,13 @@ _log = logging.getLogger(__name__)
 class Common:
     Vc: float
     Ve: float
-    output_time: float
+    V: float
     I: float
+    Rc: str
+    Re: str
+    output_time: float
     total_time: float
-        
+
 def average(values: list[float]):
     s = len(values)
     return 0.0 if s == 0 else sum(values) / s
@@ -49,24 +51,59 @@ class Events:
 
     def mapping(self, time: float):
         return int((time - self.start) * self.rate)
-    
+
+    def _output_range(self):
+        return self.mapping(self.ve_stop), self.mapping(self.output_stop)
+
+    @property
+    def Vce(self):
+        b, e = self._output_range()
+        return average(self.all_vce[b:e])
+
+    @property
+    def dmm2(self):
+        b, e = self._output_range()
+        return average(self.all_dmm2[b:e])
+
+    @property
+    def dmm3(self):
+        b, e = self._output_range()
+        return average(self.all_dmm3[b:e])
+
+    @property
+    def Ic(self):
+        b, e = self._output_range()
+        return average(self.all_ic[b:e])
+
+    @property
+    def Ie(self):
+        b, e = self._output_range()
+        return average(self.all_ie[b:e])
+
     def results(self):
         b, e = self.mapping(self.ve_stop), self.mapping(self.output_stop)
-        return dict(
-            vce = average(self.all_vce[b:e]),
-            dmm2 = average(self.all_dmm2[b:e]),
-            dmm3 = average(self.all_dmm3[b:e]),
-            ic = average(self.all_ic[b:e]),
-            ie = average(self.all_ie[b:e]),
-            vc_delay = self.ve_start - self.start,
-            ve_delay = self.ve_delay(),
+        return ReferResult(
+            target_Vce = self.common.V,
+            target_Ic=self.common.I,
+
+            Vce = average(self.all_vce[b:e]),
+            Ic = average(self.all_ic[b:e]),
+
+            Vc = self.common.Vc,
+            Ve = self.common.Ve,
+            Rc = self.common.Rc,
+            Re = self.common.Re,
+
+            Vc_delay = self.ve_start - self.start,
+            Ve_delay = self.ve_stop - self.ve_start,
+
             all_vce = self.all_vce,
             all_dmm2 = self.all_dmm2,
             all_dmm3 = self.all_dmm3,
             all_ic = self.all_ic,
             all_ie = self.all_ie,
         )
-    
+
     def exec_result(self):
         b, e = self.mapping(self.ve_stop), self.mapping(self.output_stop)
         return dict(
@@ -76,10 +113,10 @@ class Events:
             all_ic = self.all_ic[b:e],
             all_ie = self.all_ie[b:e],
         )
-    
+
     def ve_delay(self):
         return self.ve_stop - self.ve_start
-    
+
 class Cancellation(Exception):
     pass
 
@@ -96,6 +133,8 @@ class Worker(QObject):
     stateChanged = Signal(bool)
     targetStarted = Signal(float, float) # target Vce, target Ic
     message = Signal(str)
+    logged = Signal(str)
+    plots = Signal(list, str, str)
 
     # refer
     referTested = Signal(ReferResult)
@@ -105,9 +144,6 @@ class Worker(QObject):
     execTested = Signal(ExecResult)
     execComplete = Signal(ExecAllResult)
 
-    logged = Signal(str)
-    plots = Signal(list, str, str)
-    
     Power1: PowerCV
     Power2: PowerCV
     R: Resist
@@ -134,7 +170,7 @@ class Worker(QObject):
             self._mutex.lock()
             stack.callback(self._mutex.unlock)
             self._paused = True
-    
+
     def setup_devices(self, dev: Devices):
         _log.info('正在连接仪器...')
         self._async(self._dmms.connects(dev.dmms))
@@ -152,15 +188,23 @@ class Worker(QObject):
     @property
     def powerVc(self):
         return self.Power1 if self.type == 'NPN' else self.Power2
-    
+
     @property
     def powerVe(self):
         return self.Power2 if self.type == 'NPN' else self.Power1
-    
+
+    @property
+    def Vcb(self):
+        return 'DMM3' if self.type == 'NPN' else 'DMM2'
+
+    @property
+    def Vbe(self):
+        return 'DMM2' if self.type == 'NPN' else 'DMM3'
+
     @property
     def Ic(self):
         return 'DMM4' if self.type == 'NPN' else 'DMM5'
-    
+
     @property
     def Ie(self):
         return 'DMM5' if self.type == 'NPN' else 'DMM4'
@@ -219,7 +263,7 @@ class Worker(QObject):
             self.powerVc.set_voltage(common.Vc)
             _log.info('[power] wait Vc...')
             await events.vc.wait() # 等待 Vce 就绪
-            
+
             _log.info('[power] Vc finish')
 
             self.powerVc.set_limit_current(common.I * 2.2)
@@ -230,7 +274,7 @@ class Worker(QObject):
             await events.ve_vce.wait() # 等待 Vce 就绪
             await events.ve_ic.wait() # 等待 Ic 就绪
             _log.info('[power] Ve finish')
-            
+
             # 采集 Vce, Ic 一段时间
             self.powerVc.set_limit_current(common.I * 1.3)
             self.powerVe.set_limit_current(common.I * 1.3)
@@ -241,7 +285,7 @@ class Worker(QObject):
 
             events.output_stop = time.monotonic()
             self.powerVc.set_voltage(common.Ve)
-        
+
     def test_common(self, common: Common):
         self.check_abort()
         events = Events(common)
@@ -253,9 +297,10 @@ class Worker(QObject):
                 case 'vc':
                     duration = 0.200
                     sample = int(events.rate * duration)
-                    times = np.linspace(0, duration, sample)
-
+                    
                     if len(volts) < sample: return None
+                    
+                    times = np.linspace(0, duration, sample)
                     last = volts[-sample:]
                     co = np.polyfit(np.array(times), np.array(last), 1)
                     k, b = float(co[0]), float(co[1])
@@ -304,20 +349,17 @@ class Worker(QObject):
                         events.ve_ic.set()
 
         async def vce(events: Events):
-            async for xvolts in self._dmms.acquire('DMM1'):
+            async for xvolts in self._dmms['DMM1'].acquire(events.output):
                 events.all_vce.extend(xvolts)
                 on_vce(events)
-                if events.output.is_set(): return
 
-        async def dmm2(events: Events):
-            async for vs in self._dmms.acquire('DMM2'):
+        async def vcb(events: Events):
+            async for vs in self._dmms[self.Vcb].acquire(events.output):
                 events.all_dmm2.extend(vs)
-                if events.output.is_set(): return
 
-        async def dmm3(events: Events):
-            async for vs in self._dmms.acquire('DMM3'):
+        async def vbe(events: Events):
+            async for vs in self._dmms[self.Vbe].acquire(events.output):
                 events.all_dmm3.extend(vs)
-                if events.output.is_set(): return
 
         async def ic(events: Events):
             async for xcurr in self._dmms.acquire(self.Ic):
@@ -348,13 +390,11 @@ class Worker(QObject):
                     tg.create_task(vce(events), name='vce')
                     tg.create_task(ic(events), name='ic')
                     tg.create_task(ie(events), name='ie')
-                    tg.create_task(dmm2(events), name='dmm2')
-                    tg.create_task(dmm3(events), name='dmm3')
+                    tg.create_task(vcb(events), name='vcb')
+                    tg.create_task(vbe(events), name='vbe')
                     tg.create_task(total_timeout(events), name='total_timeout')
-                    
-                results = events.results()
-                # self.plots.emit(results['ic'], 'ic', 'I')
-                return results
+
+                return events.results()
             finally:
                 if fp is not None: fp.cancel()
 
@@ -373,17 +413,20 @@ class Worker(QObject):
         self.referComplete.emit(all_results)
         self.message.emit('测试成功，请在数据表查看数据，在持续测试界面进一步测试')
 
+    def set_resist(self, Rc: str, Re: str):
+        _log.info(f'{Rc = }, {Re = }')
+        match self.type:
+            case 'NPN': return self.R.set_resists(Re, Rc)
+            case 'PNP': return self.R.set_resists(Rc, Re)
+            case t: assert False, f'无效的晶体管类型({t})'
+
     def search_npn(self, arg: ReferArgument, target: ReferTarget):
         target_Vce = target.Vce
         target_Ic = target.Ic
 
-        _log.info(f'[NPN] 测试目标: Vce {target_Vce}, Ic {target_Ic}')
+        _log.info(f'[{arg.type}] 测试目标: Vce {target_Vce}, Ic {target_Ic}')
 
-        Req = target_Vce / target_Ic
-        # 1 / target_Ic
-
-        Re, Rc = self.R.set_resists(target.Re, target.Rc)
-        _log.info(f'{Req = }, {Rc = }, {Re = }')
+        self.set_resist(target.Rc, target.Re)
 
         self._async(self._dmms.set_volt_range(
             DMM1=target_Vce,
@@ -405,43 +448,29 @@ class Worker(QObject):
             if self.counter > 50:
                 raise Exception('多次调整 Vc/Ve 也未能达到目标条件')
 
-            results = self.test_common(Common(
+            xresult = self.test_common(Common(
                 Vc=Vc,
                 Ve=Ve,
+                V=target.Vce,
+                I=target.Ic,
+                Rc=target.Rc,
+                Re=target.Re,
                 output_time=arg.duration,
-                I=target_Ic,
                 total_time=arg.stable_duration,
             ))
-            xresult = ReferResult(
-                target_Vce=target_Vce,
-                target_Ic=target_Ic,
-                Vce=results['vce'],
-                Ic=results['ic'],
-                Vc=Vc,
-                Ve=Ve,
-                Rc=Rc,
-                Re = Re,
-                Vc_delay=results['vc_delay'],
-                Ve_delay=results['ve_delay'],
-                all_vce=results['all_vce'],
-                all_dmm2=results['all_dmm2'],
-                all_dmm3=results['all_dmm3'],
-                all_ic=results['all_ic'],
-                all_ie=results['all_ie'],
-            )
             self.referTested.emit(xresult)
-            # self.pointTested.emit(xresult.Vce, xresult.Ic)
-            return xresult        
-        return self.search(target_Vce, target_Ic, ohm_to_float(Rc), _test)
+            return xresult
+        return self.search(target_Vce, target_Ic, ohm_to_float(target.Rc), _test)
 
     def search_pnp(self, arg: ReferArgument, target: ReferTarget):
         target_Vce = -target.Vce
         target_Ic = target.Ic
 
-        _log.info(f'[PNP] 测试目标: Vce {target_Vce}, Ic {target_Ic}')
-        # Req = abs(min(30, target_Vce) / target_Ic)
-        Re, Rc = self.R.set_resists(target.Re, target.Rc)
-        _log.info(f'{Rc = }, {Re = }')
+        _log.info(f'[{arg.type}] 测试目标: Vce {target_Vce}, Ic {target_Ic}')
+
+        Req = abs(target.Vce) / target_Ic
+        Rc, Re = self.R.set_resists(target.Rc, target.Re)
+        _log.info(f'{Req = }, {Rc = }, {Re = }')
 
         self._async(self._dmms.set_volt_range(
             DMM1=abs(target_Vce),
@@ -462,36 +491,21 @@ class Worker(QObject):
             self.counter += 1
             if self.counter > 50:
                 raise Exception('多次调整 Vc/Ve 也未能达到目标条件')
-            
-            results = self.test_common(Common(
+
+            xresult = self.test_common(Common(
                 Vc=Vc,
                 Ve=Ve,
-                output_time=arg.duration / 2,
-                I=target_Ic,
+                V=target_Vce,
+                I=target.Ic,
+                Rc=target.Rc,
+                Re=target.Re,
+                output_time=arg.duration,
                 total_time=arg.stable_duration,
             ))
-            xresult = ReferResult(
-                target_Vce=target_Vce,
-                target_Ic=target_Ic,
-                Vce=-results['vce'],
-                Ic=results['ic'],
-                Vc=Vc,
-                Ve=Ve,
-                Rc=Rc,
-                Re = Re,
-                Vc_delay=results['vc_delay'],
-                Ve_delay=results['ve_delay'],
-                all_vce=results['all_vce'],
-                all_dmm2=results['all_dmm2'],
-                all_dmm3=results['all_dmm3'],
-                all_ic=results['all_ic'],
-                all_ie=results['all_ie'],
-            )
             self.referTested.emit(xresult)
-            # self.pointTested.emit(-xresult.Vce, xresult.Ic)
             return xresult
         return self.search(target_Vce, target_Ic, ohm_to_float(Rc), _test)
-    
+
     def search(self, target_Vce: float, target_Ic: float, Rc: float, _test: Callable[[float, float], ReferResult]):
         self.targetStarted.emit(target_Vce, target_Ic)
 
@@ -609,11 +623,11 @@ class Worker(QObject):
             self.execTested.emit(result)
         self.execComplete.emit(all_results)
         self.message.emit('持续测试成功，请查看数据表和图表')
-    
+
     async def exec(self, arg: ExecArgument, item: ExecItem):
         _log.info(f'[exec] start {arg}, {item}')
         self.check_abort()
-        
+
         def on_vce(events: Events):
             volts = events.all_vce
 
@@ -691,13 +705,17 @@ class Worker(QObject):
                     await events.output.wait()
             except TimeoutError as e:
                 raise Exception('电路建立稳态的时间过长') from e
-            
+
         events = Events(Common(
-            Vc=item.Vc, 
-            Ve=item.Ve, 
-            output_time=item.duration, 
-            I=item.Ic, 
-            total_time=10))        
+            Vc=item.Vc,
+            Ve=item.Ve,
+            V=item.Vce,
+            I=item.Ic,
+            Rc=item.Rc,
+            Re=item.Re,
+            output_time=item.duration,
+            total_time=10
+        ))
         events.rate = await self._dmms.auto_sample(events.common.total_time)
         await self._dmms.set_volt_range(
             DMM1=item.refer_Vce,

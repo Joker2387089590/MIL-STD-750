@@ -14,7 +14,7 @@ from .exec import ExecPanel
 from .device import DevicePanel
 from .worker import Worker
 from .scope import Scope
-from .dmm import plot
+from .dmm import plc_to_rate
 from . import global_logger
 
 _log = logging.getLogger(__name__)
@@ -99,10 +99,29 @@ class MainWindow(QtWidgets.QMainWindow):
         self.common: Common | None = None
 
         self.config_logs()
+        self._init_plot()
+
+    def _init_plot(self):
+        self.fig_V, self.ax_V = plt.subplots()
+        self.fig_I, self.ax_I = plt.subplots()
 
     def plot(self, results, name, type):
-        plot(results, name, type)
-        pass
+        def sample_duration(point: int, plc: str):
+            rate = plc_to_rate[plc]
+            return point / rate
+        
+        if type == 'V':
+            fig, ax = self.fig_V, self.ax_V
+        else:
+            fig, ax = self.fig_I, self.ax_I
+
+        _log.info(f'[plot] {name} {len(results)}')
+        d = sample_duration(len(results), "0.1")
+        times = np.linspace(0, d, len(results))
+        ax.plot(times, results, '.-')
+
+        ax.set_title(name)
+        fig.show()
 
     def config_logs(self):
         root = logging.getLogger()

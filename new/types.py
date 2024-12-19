@@ -19,10 +19,16 @@ class ReferTarget:
 class ReferArgument:
     name: str
     type: Literal['NPN', 'PNP']
+    
     duration: float
     stable_duration: float
+
     Vc_max: float
     Ve_max: float
+    Vceo: float
+    Vcbo: float
+    Vebo: float
+
     targets: list[ReferTarget]
 
     @classmethod
@@ -34,6 +40,9 @@ class ReferArgument:
             stable_duration=data.get('stable_duration', 10.0),
             Vc_max=data.get('Vc_max', 200.0),
             Ve_max=data.get('Ve_max', 200.0),
+            Vceo=data.get('Vceo', 200.0),
+            Vcbo=data.get('Vcbo', 200.0),
+            Vebo=data.get('Vebo', 200.0),
             targets=[ReferTarget(**t) for t in data.get('targets', [])],
         )
 
