@@ -76,7 +76,7 @@ class ReferResult:
             f'{self.Ic:.6f}',
             f'{self.Vc:.3f}',
             f'{self.Ve:.3f}',
-            f'{self.Ve - self.Ic * float(self.Rc.replace('k', 'e3'))}',
+            f'{self.Ve - self.Ic * float(self.Rc.replace("k", "e3"))}',
             f'{self.Rc}',
             f'{self.Re}',
             f'{self.Vc_delay:.3f}',
@@ -109,6 +109,9 @@ class ExecArgument:
     name: str
     type: Literal['NPN', 'PNP']
     items: list[ExecItem]
+    Vceo: float
+    Vcbo: float
+    Vebo: float
 
     @classmethod
     def fromdict(cls, data: dict):
@@ -120,7 +123,10 @@ class ExecArgument:
         return cls(
             name = data.get('name', 'test'),
             type = data.get('type', 'NPN'),
-            items = xitems
+            Vceo = data.get('Vceo', 200.0),
+            Vcbo = data.get('Vcbo', 200.0),
+            Vebo = data.get('Vebo', 200.0),
+            items = xitems,
         )
 
 @dataclass

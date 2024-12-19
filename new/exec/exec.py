@@ -1,5 +1,6 @@
 import logging
 import matplotlib.pyplot as plt
+from matplotlib.axes import Axes
 import numpy as np
 from PySide6 import QtWidgets, QtGui, QtCore
 from PySide6.QtCore import Signal, Slot, Qt
@@ -31,8 +32,8 @@ class ExecPanel(QtWidgets.QWidget):
         self.args: dict[int, ExecArgument] = {}
         self.items: dict[int, QListWidgetItem] = {}
         self.ui.listRefer.itemClicked.connect(self._set_current_item)
-        # self.ui.listRefer.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
-        # self.ui.listRefer.customContextMenuRequested.connect(self._show_context_menu)
+        self.ui.listRefer.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        self.ui.listRefer.customContextMenuRequested.connect(self._show_context_menu)
         self.update_running_state(False)
 
     def _set_current_item(self, item: QListWidgetItem):
@@ -51,7 +52,7 @@ class ExecPanel(QtWidgets.QWidget):
         if not item: return
 
         menu = QtWidgets.QMenu(self)
-        menu.addAction('编辑', lambda: self._try_edit(item))
+        # menu.addAction('编辑', lambda: self._try_edit(item))
         menu.addAction('删除', lambda: self._try_delete(item))
         menu.exec(self.ui.listRefer.mapToGlobal(point))
 
@@ -71,7 +72,14 @@ class ExecPanel(QtWidgets.QWidget):
 
     def receive_refer_all_results(self, refer: ReferAllResult):
         arg = refer.argument
-        earg = ExecArgument(name=arg.name, type=arg.type, items=[])
+        earg = ExecArgument(
+            name=arg.name, 
+            type=arg.type,
+            Vebo=refer.argument.Vebo,
+            Vcbo=refer.argument.Vcbo,
+            Vceo=refer.argument.Vceo,
+            items=[],
+        )
         for result in refer.results:
             earg.items.append(ExecItem(
                 Vce=result.target_Vce,
@@ -119,6 +127,9 @@ class ExecPanel(QtWidgets.QWidget):
         ie = xresults.all_ie
 
         fig, (axv, axi) = plt.subplots(2, 1)
+        axv: Axes
+        axi: Axes
+        
         def times(vs):
             d = len(vs) / xresults.rate
             return np.linspace(0, d, len(vs))

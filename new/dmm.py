@@ -16,27 +16,6 @@ plc_to_rate = {
 
 _data_points_pattern = re.compile(rb'#(\d)(.*)')
 
-def _func(name: str):
-    volts = ('DMM1', 'DMM2', 'DMM3')
-    return 'VOLTage' if name in volts else 'CURRent'
-
-async def dwrite(writer: StreamWriter, *cmds: bytes | str):
-    for cmd in cmds: 
-        if isinstance(cmd, str): cmd = cmd.encode()
-        assert isinstance(cmd, bytes)
-        cmd = cmd.rstrip() + b'\n'
-        writer.write(cmd)
-    await writer.drain()
-
-async def xread(reader: StreamReader, timeout: float = 3):
-    async with asyncio.timeout(timeout):
-        line = await reader.readline()
-        return line.rstrip()
-
-async def query(writer: StreamWriter, reader: StreamReader, cmd: bytes | str, timeout: float = 3):
-    await dwrite(writer, cmd)
-    return await xread(reader, timeout)
-
 def top(values: list[float], step: float):
     assert values
     mid = (max(values) + min(values)) / 2
@@ -171,8 +150,8 @@ class _Meter:
     #     return ex
 
     async def acquire(self, event: asyncio.Event | None = None):
-        test = event.is_set if event else lambda: True
-        while test():
+        test = event.is_set if event else lambda: False
+        while not test():
             await asyncio.sleep(0.050)
             response = await self.query(b'R?')
             
@@ -206,8 +185,11 @@ class MultiMeter:
     async def connect_one(self, name: str, ip: str):
         try:
             reader, writer = await asyncio.open_connection(ip, 5025, limit=4096 * 1024)
-            idn = await query(writer, reader, b'*IDN?')
+            
+            meter = _Meter(name, reader, writer)
+            idn = await meter.query(b'*IDN?')
             _log.debug(f'[{name}] IDN from {ip}: {idn}')
+
             self.streams[name] = (reader, writer)
         except Exception:
             _log.exception(f'[{name}] 连接失败')

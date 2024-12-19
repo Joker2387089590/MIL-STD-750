@@ -6,7 +6,7 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
 from PySide6 import QtWidgets
-from PySide6.QtCore import QThread, Signal, Slot, QTimer
+from PySide6.QtCore import QThread, Signal, Qt, QTimer
 
 from .types import *
 from .refer import ReferPanel
@@ -20,7 +20,11 @@ from . import global_logger
 _log = logging.getLogger(__name__)
 _config = Path(__file__).with_name('config.json')
 
-class Common(Protocol):
+def debugger_is_active() -> bool:
+    """Return if the debugger is currently active"""
+    return hasattr(sys, 'gettrace') and sys.gettrace() is not None
+
+class _Common(Protocol):
     def update_running_state(self, running: bool): ...
     def start_target(self): ...
     def setDisabled(self, arg__1: bool): ...
@@ -54,7 +58,8 @@ class UiHandler(logging.Handler):
 
 class DebugThread(QThread):
     def run(self):
-        debugpy.debug_this_thread()
+        if debugger_is_active():
+            debugpy.debug_this_thread()
         return super().run()
 
 class MainWindow(QtWidgets.QMainWindow):
@@ -93,13 +98,13 @@ class MainWindow(QtWidgets.QMainWindow):
         self.context.referTested.connect(self.add_refer)
         self.context.referComplete.connect(self.exec.receive_refer_all_results)
         self.context.execTested.connect(self.receive_exec)
-        self.context.plots.connect(self.plot)
+        # self.context.plots.connect(self.plot)
         self.context.message.connect(self.message)
 
-        self.common: Common | None = None
+        self.common: _Common | None = None
 
         self.config_logs()
-        self._init_plot()
+        # self._init_plot()
 
     def _init_plot(self):
         self.fig_V, self.ax_V = plt.subplots()
@@ -156,7 +161,7 @@ class MainWindow(QtWidgets.QMainWindow):
         file.setLevel(logging.INFO)
 
         ui_handler = UiHandler(self.logged)
-        self.logged.connect(self.logs.appendHtml)
+        self.logged.connect(self.logs.appendHtml, Qt.ConnectionType.QueuedConnection)
 
         for h in [handler_out, handler_err, file, ui_handler]: 
             global_logger.addHandler(h)
@@ -214,7 +219,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def update_running_state(self, running: bool):
         for c in [self.refer, self.exec]:
-            c: Common
+            c: _Common
             if c is self.common:
                 assert self.common is not None
                 self.common.update_running_state(running)

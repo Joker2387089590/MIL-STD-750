@@ -16,10 +16,13 @@ _log = logging.getLogger(__name__)
 class Common:
     Vc: float
     Ve: float
-    V: float
-    I: float
+    Vce: float
+    Ic: float
     Rc: str
     Re: str
+    Vceo: float
+    Vebo: float
+    Vcbo: float
     output_time: float
     total_time: float
 
@@ -83,8 +86,8 @@ class Events:
     def results(self):
         b, e = self.mapping(self.ve_stop), self.mapping(self.output_stop)
         return ReferResult(
-            target_Vce = self.common.V,
-            target_Ic=self.common.I,
+            target_Vce = self.common.Vce,
+            target_Ic=self.common.Ic,
 
             Vce = average(self.all_vce[b:e]),
             Ic = average(self.all_ic[b:e]),
@@ -258,16 +261,16 @@ class Worker(QObject):
         with self.powerVc, self.powerVe:
             events.start = time.monotonic()
 
-            self.powerVc.set_limit_current(common.I * 5)
-            self.powerVe.set_limit_current(common.I * 5)
+            self.powerVc.set_limit_current(common.Ic * 5)
+            self.powerVe.set_limit_current(common.Ic * 5)
             self.powerVc.set_voltage(common.Vc)
             _log.info('[power] wait Vc...')
             await events.vc.wait() # 等待 Vce 就绪
 
             _log.info('[power] Vc finish')
 
-            self.powerVc.set_limit_current(common.I * 2.2)
-            self.powerVe.set_limit_current(common.I * 2.2)
+            self.powerVc.set_limit_current(common.Ic * 2.2)
+            self.powerVe.set_limit_current(common.Ic * 2.2)
             self.powerVe.set_voltage(common.Ve)
             events.ve_start = time.monotonic()
             _log.info('[power] wait Ve...')
@@ -276,8 +279,8 @@ class Worker(QObject):
             _log.info('[power] Ve finish')
 
             # 采集 Vce, Ic 一段时间
-            self.powerVc.set_limit_current(common.I * 1.3)
-            self.powerVe.set_limit_current(common.I * 1.3)
+            self.powerVc.set_limit_current(common.Ic * 1.3)
+            self.powerVe.set_limit_current(common.Ic * 1.3)
             _log.info('[power] wait output...')
             await asyncio.sleep(common.output_time)
             _log.info('[power] output finish')
@@ -292,6 +295,14 @@ class Worker(QObject):
 
         def on_vce(events: Events):
             volts = events.all_vce
+            
+            duration = 0.100
+            sample = int(events.rate * duration)
+            if sample >= len(volts):
+                last = volts[-sample:]
+                vce = abs(average(last))
+                if vce > common.Vceo:
+                    raise Exception(f'Vcb ({vce:.3f}V) 超出 Vcbo ({common.Vceo}V)')
 
             match events.state:
                 case 'vc':
@@ -331,6 +342,26 @@ class Worker(QObject):
                         events.ve_stop = events.start + prev / events.rate
                         events.ve_vce.set()
 
+        def on_vcb(events: Events):
+            volts = events.all_dmm2 if self.Vcb == 'DMM2' else events.all_dmm3
+            duration = 0.100
+            sample = int(events.rate * duration)
+            if len(volts) < sample: return None
+            last = volts[-sample:]
+            vcb = abs(average(last))
+            if vcb > common.Vcbo:
+                raise Exception(f'Vcb ({vcb:.3f}V) 超出 Vcbo ({common.Vcbo}V)')
+
+        def on_veb(events: Events):
+            volts = events.all_dmm2 if self.Vbe == 'DMM2' else events.all_dmm3
+            duration = 0.100
+            sample = int(events.rate * duration)
+            if len(volts) < sample: return None
+            last = volts[-sample:]
+            veb = abs(average(last))
+            if veb > common.Vebo:
+                raise Exception(f'Veb ({veb:.3f}V) 超出 Vcbo ({common.Vebo}V)')
+
         def on_ic(events: Events):
             match events.state:
                 case 've':
@@ -343,7 +374,7 @@ class Worker(QObject):
                     co = np.polyfit(np.array(times), np.array(last), 1)
                     k, b = float(co[0]), float(co[1])
 
-                    hint = events.common.I * 0.05 / events.common.output_time
+                    hint = events.common.Ic * 0.05 / events.common.output_time
                     _log.info(f'[refer] Ic acquire: {hint = } {k = :.6f}, {b = :.6f}')
                     if abs(k) < abs(hint):
                         events.ve_ic.set()
@@ -356,21 +387,21 @@ class Worker(QObject):
         async def vcb(events: Events):
             async for vs in self._dmms[self.Vcb].acquire(events.output):
                 events.all_dmm2.extend(vs)
+                on_vcb(events)
 
         async def vbe(events: Events):
             async for vs in self._dmms[self.Vbe].acquire(events.output):
                 events.all_dmm3.extend(vs)
+                on_veb(events)
 
         async def ic(events: Events):
-            async for xcurr in self._dmms.acquire(self.Ic):
+            async for xcurr in self._dmms[self.Ic].acquire(events.output):
                 events.all_ic.extend(xcurr)
                 on_ic(events)
-                if events.output.is_set(): return
 
         async def ie(events: Events):
-            async for vs in self._dmms.acquire(self.Ie):
+            async for vs in self._dmms[self.Ie].acquire(events.output):
                 events.all_ie.extend(vs)
-                if events.output.is_set(): return
 
         async def total_timeout(events: Events):
             try:
@@ -451,10 +482,13 @@ class Worker(QObject):
             xresult = self.test_common(Common(
                 Vc=Vc,
                 Ve=Ve,
-                V=target.Vce,
-                I=target.Ic,
+                Vce=target.Vce,
+                Ic=target.Ic,
                 Rc=target.Rc,
                 Re=target.Re,
+                Vcbo=arg.Vcbo,
+                Vceo=arg.Vceo,
+                Vebo=arg.Vebo,
                 output_time=arg.duration,
                 total_time=arg.stable_duration,
             ))
@@ -495,10 +529,13 @@ class Worker(QObject):
             xresult = self.test_common(Common(
                 Vc=Vc,
                 Ve=Ve,
-                V=target_Vce,
-                I=target.Ic,
+                Vce=target_Vce,
+                Ic=target.Ic,
                 Rc=target.Rc,
                 Re=target.Re,
+                Vcbo=arg.Vcbo,
+                Vceo=arg.Vceo,
+                Vebo=arg.Vebo,
                 output_time=arg.duration,
                 total_time=arg.stable_duration,
             ))
@@ -622,7 +659,6 @@ class Worker(QObject):
             result = self._async(self.exec(arg, item))
             self.execTested.emit(result)
         self.execComplete.emit(all_results)
-        self.message.emit('持续测试成功，请查看数据表和图表')
 
     async def exec(self, arg: ExecArgument, item: ExecItem):
         _log.info(f'[exec] start {arg}, {item}')
@@ -709,10 +745,13 @@ class Worker(QObject):
         events = Events(Common(
             Vc=item.Vc,
             Ve=item.Ve,
-            V=item.Vce,
-            I=item.Ic,
+            Vce=item.Vce,
+            Ic=item.Ic,
             Rc=item.Rc,
             Re=item.Re,
+            Vcbo=arg.Vcbo,
+            Vceo=arg.Vceo,
+            Vebo=arg.Vebo,
             output_time=item.duration,
             total_time=10
         ))
@@ -744,7 +783,6 @@ class Worker(QObject):
                 tg.create_task(dmm3(events), name='dmm3')
                 tg.create_task(total_timeout(events), name='total_timeout')
                 tg.create_task(delay(events, item.Ve_delay))
-            results = events.exec_result()
             xresults = ExecResult(
                 type=arg.type,
                 rate=events.rate,

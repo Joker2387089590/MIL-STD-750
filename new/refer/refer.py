@@ -26,6 +26,7 @@ class ReferPanel(QtWidgets.QWidget):
         self._setup_args()
 
         def try_start():
+            _log.debug('[refer] try start...')
             self.ui.btnStart.setDisabled(True)
             self.startRequested.emit()
         ui.btnStart.clicked.connect(try_start)
@@ -175,6 +176,7 @@ class ReferPanel(QtWidgets.QWidget):
     
     @Slot()
     def update_running_state(self, running: bool):
+        _log.debug(f'[refer] running state changed: {running}')
         self.ui.btnStart.setDisabled(running)
         self.ui.btnStop.setEnabled(running)
         self.ui.listArgs.setDisabled(running)

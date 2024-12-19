@@ -152,6 +152,9 @@ class ArgumentPanel(QDialog):
 
         self.ui.maxVc.setValue(data.Vc_max)
         self.ui.maxVe.setValue(data.Ve_max)
+        self.ui.Vceo.setValue(data.Vceo)
+        self.ui.Vebo.setValue(data.Vebo)
+        self.ui.Vcbo.setValue(data.Vcbo)
 
     def accept(self):
         name = self.ui.name.text()
