@@ -8,6 +8,7 @@ from PySide6.QtWidgets import (
 from ..types import *
 from ..args import ArgumentPanel
 from ..chart import Chart
+from ..table_csv import export_csv
 from .refer_ui import Ui_ReferPanel
 
 _log = logging.getLogger(__name__)
@@ -114,7 +115,7 @@ class ReferPanel(QtWidgets.QWidget):
     def _set_current_args(self, item: QListWidgetItem):
         self.ui.listArgs.setCurrentItem(item)
         arg = self.args[id(item)]
-        self.chart.set_targets(arg.targets)
+        self.chart.set_targets([(t.Vce, t.Ic) for t in arg.targets])
 
     def _add_args(self, arg: ReferArgument, item: QListWidgetItem):
         xid = id(item)
@@ -204,20 +205,7 @@ class ReferPanel(QtWidgets.QWidget):
         path, ok = QtWidgets.QFileDialog.getSaveFileName(
             self, caption='导出参考数据', filter='CSV(*.csv)')
         if not ok: return
-
-        columns = range(self.ui.table.columnCount())
-        header = [
-            self.ui.table.horizontalHeaderItem(column).text()
-            for column in columns
-        ]
-        with open(path, 'w') as csvfile:
-            writer = csv.writer(csvfile, dialect='excel', lineterminator='\n')
-            writer.writerow(header)
-            for row in range(self.ui.table.rowCount()):
-                writer.writerow(
-                    self.ui.table.item(row, column).text()
-                    for column in columns
-                )
+        export_csv(self.ui.table, path)
         
     def clear_table(self):
         ret = QtWidgets.QMessageBox.warning(

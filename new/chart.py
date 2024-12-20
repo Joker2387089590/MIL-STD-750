@@ -1,8 +1,7 @@
 from __future__ import annotations
 import logging, math
 from PySide6 import QtCharts
-from PySide6.QtCore import Qt
-from .types import ReferTarget
+from PySide6.QtCore import Qt, QPointF
 
 _log = logging.getLogger(__name__)
 _min_Vce, _max_Vce = 10 ** -1.05, 10 ** 3.05
@@ -64,14 +63,15 @@ class Chart(QtCharts.QChart):
         series.attachAxis(self.ax)
         series.attachAxis(self.ay)
 
-    def set_targets(self, targets: list[ReferTarget]):
-        self.target.clear()
-        Ics = [10e-3]
-        for t in targets:
-            Vce, Ic = t.Vce, t.Ic
-            if Vce <= 0 or Ic <= 0: continue
-            self.target.append(Vce, Ic)
-            Ics.append(Ic)
+    def set_targets(self, targets: list[tuple[float, float]]):
+        # filter invalid targets
+        targets = [(v, i) for v, i in targets if v > 0 and i > 0]
+        
+        self.target.replace([QPointF(v, i) for v, i in targets])
+
+        # adjust Y
+        Ics = [i for v, i in targets]
+        Ics.append(10e-3)
         max_Ic = max(Ics)
         top_Ic = 10 ** (math.ceil(math.log10(max_Ic)) + 0.2)
         self.ay.setRange(5e-5, top_Ic)

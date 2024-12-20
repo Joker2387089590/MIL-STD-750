@@ -98,6 +98,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.context.referTested.connect(self.add_refer)
         self.context.referComplete.connect(self.exec.receive_refer_all_results)
         self.context.execTested.connect(self.receive_exec)
+        self.context.execComplete.connect(self.exec.receive_exec_all_results)
         # self.context.plots.connect(self.plot)
         self.context.message.connect(self.message)
 

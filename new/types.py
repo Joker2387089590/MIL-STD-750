@@ -132,6 +132,7 @@ class ExecArgument:
 @dataclass
 class ExecResult:
     type: Literal['NPN', 'PNP']
+    item: ExecItem
     rate: float
     ve_start: float
     ve_stop: float
@@ -153,7 +154,6 @@ class ExecResult:
         avg = sum(values) / len(values)
         return min(values) > avg * 0.9 and max(values) < avg * 1.1
         
-
 @dataclass
 class ExecAllResult:
-    ...
+    results: list[ExecResult]

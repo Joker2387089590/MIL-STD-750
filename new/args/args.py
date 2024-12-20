@@ -121,7 +121,11 @@ class ArgumentPanel(QDialog):
 
     @Slot()
     def update_targets(self):
-        self.chart.set_targets(self.get_targets())
+        targets: list[tuple[float, float]] = []
+        for target in self.targets:
+            data = target.save()
+            targets.append((data.Vce, data.Ic))
+        self.chart.set_targets(targets)
 
     def save(self):
         return ReferArgument(

@@ -360,7 +360,7 @@ class Worker(QObject):
             last = volts[-sample:]
             veb = abs(average(last))
             if veb > common.Vebo:
-                raise Exception(f'Veb ({veb:.3f}V) 超出 Vcbo ({common.Vebo}V)')
+                raise Exception(f'Veb ({veb:.3f}V) 超出 Vebo ({common.Vebo}V)')
 
         def on_ic(events: Events):
             match events.state:
@@ -654,9 +654,10 @@ class Worker(QObject):
             pass
 
     def run_exec(self, arg: ExecArgument):
-        all_results = ExecAllResult()
+        all_results = ExecAllResult([])
         for item in arg.items:
             result = self._async(self.exec(arg, item))
+            all_results.results.append(result)
             self.execTested.emit(result)
         self.execComplete.emit(all_results)
 
@@ -699,7 +700,7 @@ class Worker(QObject):
 
         async def vce(events: Events):
             empty_count = 0
-            async for xvolts in self._dmms.acquire('DMM1'):
+            async for xvolts in self._dmms['DMM1'].acquire(events.output):
                 if len(xvolts) == 0:
                     empty_count += 1
                 else:
@@ -707,33 +708,28 @@ class Worker(QObject):
                 if empty_count >= 3: return
                 events.all_vce.extend(xvolts)
                 on_vce(events)
-                if events.output.is_set(): return
 
         async def dmm2(events: Events):
             empty_count = 0
-            async for vs in self._dmms.acquire('DMM2'):
+            async for vs in self._dmms['DMM2'].acquire(events.output):
                 if len(vs) == 0:
                     empty_count += 1
                 else:
                     empty_count = 0
                 if empty_count >= 3: return
                 events.all_dmm2.extend(vs)
-                if events.output.is_set(): return
 
         async def dmm3(events: Events):
-            async for vs in self._dmms.acquire('DMM3'):
+            async for vs in self._dmms['DMM3'].acquire(events.output):
                 events.all_dmm3.extend(vs)
-                if events.output.is_set(): return
 
         async def ic(events: Events):
-            async for xcurr in self._dmms.acquire(self.Ic):
+            async for xcurr in self._dmms[self.Ic].acquire(events.output):
                 events.all_ic.extend(xcurr)
-                if events.output.is_set(): return
 
         async def ie(events: Events):
-            async for vs in self._dmms.acquire(self.Ie):
+            async for vs in self._dmms[self.Ie].acquire(events.output):
                 events.all_ie.extend(vs)
-                if events.output.is_set(): return
 
         async def total_timeout(events: Events):
             try:
@@ -783,8 +779,9 @@ class Worker(QObject):
                 tg.create_task(dmm3(events), name='dmm3')
                 tg.create_task(total_timeout(events), name='total_timeout')
                 tg.create_task(delay(events, item.Ve_delay))
-            xresults = ExecResult(
+            return ExecResult(
                 type=arg.type,
+                item=item,
                 rate=events.rate,
                 ve_start=events.ve_start - events.start,
                 ve_stop=events.ve_stop - events.start,
@@ -795,6 +792,5 @@ class Worker(QObject):
                 all_ic=events.all_ic,
                 all_ie=events.all_ie,
             )
-            return xresults
         finally:
             if fp is not None: fp.cancel()

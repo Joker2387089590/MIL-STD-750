@@ -28,23 +28,90 @@
    <item>
     <layout class="QVBoxLayout" name="verticalLayout_3">
      <item>
-      <widget class="QWidget" name="wRunning" native="true">
-       <layout class="QHBoxLayout" name="horizontalLayout_2">
+      <layout class="QHBoxLayout" name="horizontalLayout_4" stretch="1,0">
+       <item>
+        <widget class="QWidget" name="wRunning" native="true">
+         <layout class="QHBoxLayout" name="horizontalLayout_2">
+          <property name="leftMargin">
+           <number>0</number>
+          </property>
+          <property name="topMargin">
+           <number>0</number>
+          </property>
+          <property name="rightMargin">
+           <number>0</number>
+          </property>
+          <property name="bottomMargin">
+           <number>0</number>
+          </property>
+          <item>
+           <widget class="QPushButton" name="btnStart">
+            <property name="text">
+             <string>开始</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QPushButton" name="btnStop">
+            <property name="text">
+             <string>终止</string>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </widget>
+       </item>
+       <item>
+        <widget class="QPushButton" name="btnClear">
+         <property name="text">
+          <string>清除</string>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </item>
+     <item>
+      <widget class="QWidget" name="wNo" native="true">
+       <layout class="QHBoxLayout" name="horizontalLayout">
+        <property name="leftMargin">
+         <number>0</number>
+        </property>
+        <property name="topMargin">
+         <number>0</number>
+        </property>
+        <property name="rightMargin">
+         <number>0</number>
+        </property>
+        <property name="bottomMargin">
+         <number>0</number>
+        </property>
         <item>
-         <widget class="QPushButton" name="btnStart">
+         <widget class="QLabel" name="label_2">
+          <property name="minimumSize">
+           <size>
+            <width>68</width>
+            <height>0</height>
+           </size>
+          </property>
           <property name="text">
-           <string>开始</string>
+           <string>编号</string>
+          </property>
+          <property name="alignment">
+           <set>Qt::AlignmentFlag::AlignCenter</set>
           </property>
          </widget>
         </item>
         <item>
-         <widget class="QPushButton" name="btnStop">
-          <property name="text">
-           <string>终止</string>
-          </property>
-         </widget>
+         <widget class="QLineEdit" name="editNo"/>
         </item>
        </layout>
+      </widget>
+     </item>
+     <item>
+      <widget class="QCheckBox" name="checkPlot">
+       <property name="text">
+        <string>测试完成时显示数据波形</string>
+       </property>
       </widget>
      </item>
      <item>
@@ -56,35 +123,33 @@
         <attribute name="title">
          <string>数据表</string>
         </attribute>
-        <layout class="QGridLayout" name="gridLayout_2">
-         <item row="0" column="0">
-          <widget class="QTableWidget" name="table">
-           <column>
-            <property name="text">
-             <string>Vce</string>
-            </property>
-           </column>
-           <column>
-            <property name="text">
-             <string>Vbe(NPN)/Vbc(PNP)</string>
-            </property>
-           </column>
-           <column>
-            <property name="text">
-             <string>Vcb(NPN)/Veb(PNP)</string>
-            </property>
-           </column>
-           <column>
-            <property name="text">
-             <string>Ic</string>
-            </property>
-           </column>
-           <column>
-            <property name="text">
-             <string>Ie</string>
-            </property>
-           </column>
+        <layout class="QVBoxLayout" name="verticalLayout">
+         <item>
+          <widget class="QPushButton" name="btnExportData">
+           <property name="text">
+            <string>导出数据</string>
+           </property>
           </widget>
+         </item>
+         <item>
+          <widget class="QTableWidget" name="table"/>
+         </item>
+        </layout>
+       </widget>
+       <widget class="QWidget" name="tab">
+        <attribute name="title">
+         <string>结果判定</string>
+        </attribute>
+        <layout class="QVBoxLayout" name="verticalLayout_4">
+         <item>
+          <widget class="QPushButton" name="btnExportResult">
+           <property name="text">
+            <string>导出判定</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QTableWidget" name="tableResult"/>
          </item>
         </layout>
        </widget>
