@@ -33,8 +33,6 @@ class ExecPanel(QtWidgets.QWidget):
 
         def try_start():
             self.ui.btnStart.setDisabled(True)
-            self.ui.table.setRowCount(0)
-            self.ui.tableResult.setRowCount(0)
             self.pass_fail = True
             self.startRequested.emit()
         ui.btnStart.clicked.connect(try_start)
@@ -46,10 +44,15 @@ class ExecPanel(QtWidgets.QWidget):
         self.ui.listRefer.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self.ui.listRefer.customContextMenuRequested.connect(self._show_context_menu)
 
+        self.ui.btnClear.clicked.connect(self.clear)
         self.ui.btnExportData.clicked.connect(self.export_datas)
         self.ui.btnExportResult.clicked.connect(self.export_results)
 
         self.update_running_state(False)
+
+    def clear(self):
+        self.ui.table.setRowCount(0)
+        self.ui.tableResult.setRowCount(0)
 
     def _set_current_item(self, item: QListWidgetItem):
         self.ui.listRefer.setCurrentItem(item)
