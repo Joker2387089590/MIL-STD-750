@@ -5,10 +5,10 @@ from typing import Callable
 from contextlib import ExitStack
 import numpy as np
 from PySide6.QtCore import QObject, Signal, Slot, QMutex
-from .types import *
-from .resist import Resist, ohm_to_float
-from .dmm import MultiMeter
-from .power import PowerCV
+from ..types import *
+from ..resist import Resist, ohm_to_float
+from ..dmm import MultiMeter
+from ..power import PowerCV
 
 _log = logging.getLogger(__name__)
 
@@ -264,9 +264,9 @@ class Worker(QObject):
             self.powerVc.set_limit_current(common.Ic * 5)
             self.powerVe.set_limit_current(common.Ic * 5)
             self.powerVc.set_voltage(common.Vc)
+            
             _log.info('[power] wait Vc...')
             await events.vc.wait() # 等待 Vce 就绪
-
             _log.info('[power] Vc finish')
 
             self.powerVc.set_limit_current(common.Ic * 2.2)
@@ -288,6 +288,7 @@ class Worker(QObject):
 
             events.output_stop = time.monotonic()
             self.powerVc.set_voltage(common.Ve)
+            _log.info('[power] set Vc to Ve')
 
     def test_common(self, common: Common):
         self.check_abort()
@@ -425,7 +426,8 @@ class Worker(QObject):
                     tg.create_task(vbe(events), name='vbe')
                     tg.create_task(total_timeout(events), name='total_timeout')
 
-                return events.results()
+                xr = events.results()
+                return xr
             finally:
                 if fp is not None: fp.cancel()
 
@@ -794,3 +796,7 @@ class Worker(QObject):
             )
         finally:
             if fp is not None: fp.cancel()
+
+class ReferWorker(Worker):
+    def __init__(self, parent: QObject | None = None) -> None:
+        super().__init__(parent)

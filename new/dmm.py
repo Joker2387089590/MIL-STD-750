@@ -150,10 +150,12 @@ class _Meter:
     #     return ex
 
     async def acquire(self, event: asyncio.Event | None = None):
-        test = event.is_set if event else lambda: False
-        while not test():
+        while True:
+            if event and event.is_set(): break
+
             await asyncio.sleep(0.050)
             response = await self.query(b'R?')
+            if event and event.is_set(): break
             
             if response == b'NULL':
                 yield []
@@ -164,7 +166,9 @@ class _Meter:
 
             count = int(matches[1])
             data = matches[2][count + 1:]
-            yield [float(d) for d in data.split(b',')]
+
+            results = [float(d) for d in data.split(b',')]
+            yield results
 
 class MultiMeter:
     def __init__(self):
