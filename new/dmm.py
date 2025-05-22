@@ -74,7 +74,7 @@ class _Meter:
         values = [200e-3, 2, 20, 200, 1000]
         has_range = False
         for text, value in zip(texts, values):
-            if abs(volt) < value * 0.95:
+            if abs(volt) < value * 0.90:
                 await self.write(f'SENSe:VOLTage:DC:RANGe {text}')
                 has_range = True
                 break
@@ -88,7 +88,7 @@ class _Meter:
 
         has_range = False
         for text, value in zip(texts, values):
-            if abs(curr) < value * 0.95:
+            if abs(curr) < value * 0.90:
                 await self.write(f'SENSe:CURRent:DC:RANGe {text}')
                 has_range = True
                 break
