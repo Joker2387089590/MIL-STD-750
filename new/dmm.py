@@ -1,4 +1,4 @@
-import asyncio, logging, re, math, typing
+import asyncio, logging, re, math, typing, random
 from asyncio import StreamReader, StreamWriter
 from collections import Counter
 
@@ -24,10 +24,11 @@ def top(values: list[float], step: float):
     return top, tcount
 
 class _Meter:
-    def __init__(self, name: str, reader: StreamReader, writer: StreamWriter) -> None:
+    def __init__(self, name: str, reader: StreamReader, writer: StreamWriter, fake: bool) -> None:
         self.name = name
         self.reader = reader
         self.writer = writer
+        self._fake = fake
 
     @property
     def func(self):
@@ -35,6 +36,7 @@ class _Meter:
         return 'VOLTage' if self.name in volts else 'CURRent'
 
     async def write(self, *cmds: bytes | str):
+        if self._fake: return
         for cmd in cmds: 
             if isinstance(cmd, str): cmd = cmd.encode()
             assert isinstance(cmd, bytes)
@@ -56,6 +58,8 @@ class _Meter:
         self.writer.close()
 
     async def reconfig(self):
+        if self._fake: return
+
         # RST
         await self.write(b'*RST')
         await asyncio.sleep(1.500)
@@ -98,6 +102,7 @@ class _Meter:
     #     return sample, times
         
     async def initiate(self):
+        if self._fake: return
         await self.write(b'TRIGger:SOURce EXTernal', b'INIT')
         opc = await self.query(b'*OPC?')
         if opc != b'1':
@@ -124,7 +129,11 @@ class _Meter:
             results = [float(d) for d in data.split(b',')]
             yield results
 
-    async def acquire_one(self, parser: typing.Callable[[bytes], float]) -> list[float]:
+    async def acquire_one(self, parser: typing.Callable[[bytes], float], expect: typing.Optional[float] = None) -> list[float]:
+        if self._fake: 
+            await asyncio.sleep(0.100)
+            return [random.gauss(expect or 0, 1) for _ in range(100)]
+
         response = await self.query(b'R?')
         if response == b'NULL': return []
 
@@ -137,15 +146,16 @@ class _Meter:
         return [parser(d) for d in data.split(b',')]
 
 class MultiMeter:
-    def __init__(self):
+    def __init__(self, fake: bool = False):
+        self._fake = fake
         self.streams: dict[str, tuple[StreamReader, StreamWriter]] = {}
 
     def __getitem__(self, name: str):
-        return _Meter(name, *self.streams[name])
+        return _Meter(name, *self.streams[name], self._fake)
     
     def _all(self):
         for name, stream in self.streams.items():
-            yield _Meter(name, *stream)
+            yield _Meter(name, *stream, self._fake)
 
     async def connects(self, devices_ip: list[str]):
         async with asyncio.TaskGroup() as tg:
@@ -154,19 +164,23 @@ class MultiMeter:
 
     async def connect_one(self, name: str, ip: str):
         try:
-            reader, writer = await asyncio.open_connection(ip, 5025, limit=4096 * 1024)
-            
-            meter = _Meter(name, reader, writer)
-            idn = await meter.query(b'*IDN?')
-            _log.debug(f'[{name}] IDN from {ip}: {idn}')
-
-            self.streams[name] = (reader, writer)
+            if self._fake:
+                meter = _Meter(name, None, None, self._fake) # type: ignore
+                self.streams[name] = (None, None) # type: ignore
+            else:
+                reader, writer = await asyncio.open_connection(ip, 5025, limit=4096 * 1024)
+                meter = _Meter(name, reader, writer, self._fake)
+                idn = await meter.query(b'*IDN?')
+                _log.debug(f'[{name}] IDN from {ip}: {idn}')
+                self.streams[name] = (reader, writer)
         except Exception:
             _log.exception(f'[{name}] 连接失败')
             raise
 
     async def disconnects(self):
-        for meter in self._all(): meter.disconnect()
+        if not self._fake:
+            for meter in self._all(): 
+                meter.disconnect()
         self.streams.clear()
 
     async def reconfig(self):
@@ -188,23 +202,23 @@ class MultiMeter:
 
     async def auto_sample(self, total_duration: float, plc: str = '0.1'):
         rate = plc_to_rate[plc]
-        total_sample = int(rate * total_duration)
-        if total_sample <= 10000:
-            cmds = [f'SAMPle:COUNt {total_sample}']
-        else:
-            sample = int(rate * 0.200)
-            trigger = math.ceil(float(total_sample) / sample)
-            cmds = [
-                f'SAMPle:COUNt {sample}',
-                f'TRIGger:COUNt {trigger}'
-            ]
-        
-        for meter in self._all():
-            await meter.write(f'{meter.func}:NPLC {plc}', *cmds)
-
+        if not self._fake:
+            total_sample = int(rate * total_duration)
+            if total_sample <= 10000:
+                cmds = [f'SAMPle:COUNt {total_sample}']
+            else:
+                sample = int(rate * 0.200)
+                trigger = math.ceil(float(total_sample) / sample)
+                cmds = [
+                    f'SAMPle:COUNt {sample}',
+                    f'TRIGger:COUNt {trigger}'
+                ]
+            for meter in self._all():
+                await meter.write(f'{meter.func}:NPLC {plc}', *cmds)
         return rate
     
     async def initiate(self):
+        if self._fake: return
         async with asyncio.TaskGroup() as tg:
             for meter in self._all():
                 tg.create_task(meter.initiate())

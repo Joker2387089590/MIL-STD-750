@@ -50,6 +50,9 @@ class ExecPanel(QtWidgets.QWidget):
 
         self.update_running_state(False)
 
+    def set_disabled(self, disabled: bool):
+        self.setDisabled(disabled)
+
     def clear(self):
         self.ui.table.setRowCount(0)
         self.ui.tableResult.setRowCount(0)
@@ -98,6 +101,35 @@ class ExecPanel(QtWidgets.QWidget):
         self.ui.listRefer.takeItem(self.ui.listRefer.row(item))
 
     def receive_refer_all_results(self, refer: ReferAllResult):
+        arg = refer.argument
+        earg = ExecArgument(
+            name=arg.name, 
+            type=arg.type,
+            Vebo=refer.argument.Vebo,
+            Vcbo=refer.argument.Vcbo,
+            Vceo=refer.argument.Vceo,
+            items=[],
+        )
+        for result in refer.results:
+            earg.items.append(ExecItem(
+                Vce=result.target_Vce,
+                Ic=result.target_Ic,
+                Vc=result.Vc,
+                Ve=result.Ve,
+                Rc=result.Rc,
+                Re=result.Re,
+                refer_Vce=result.Vce,
+                refer_Ic=result.Ic,
+                duration=arg.duration,
+                Ve_delay=result.Ve_delay,
+            ))
+
+        item = QListWidgetItem(earg.name)
+        self._add_exec_arg(earg, item)
+        self.ui.listRefer.addItem(item)
+        self._set_current_item(item)
+
+    def receive_refer_results(self, refer: ReferResults):
         arg = refer.argument
         earg = ExecArgument(
             name=arg.name, 

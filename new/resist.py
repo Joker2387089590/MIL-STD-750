@@ -36,24 +36,27 @@ def _resist_bit(res: float | str):
     return values[value], bits
 
 class Resist(QObject):
-    def __init__(self, info: str, parent: QObject | None = None) -> None:
+    def __init__(self, info: str, fake: bool = False, parent: QObject | None = None) -> None:
         super().__init__(parent)
-
-        port = QSerialPort(info, self)
-        port.setBaudRate(9600)
-        if not port.open(QSerialPort.OpenModeFlag.ReadWrite):
-            port.deleteLater()
-            raise Exception(port.errorString())
-        
-        self.port = port
+        self._fake = fake
+        if not fake:
+            port = QSerialPort(info, self)
+            port.setBaudRate(9600)
+            if not port.open(QSerialPort.OpenModeFlag.ReadWrite):
+                port.deleteLater()
+                raise Exception(port.errorString())
+            self.port = port
+            
         self.res1 = 0xFF
         self.res2 = 0xFF
 
     def disconnects(self):
+        if self._fake: return
         self.port.close()
         self.deleteLater()
 
     def _apply(self):
+        if self._fake: return True
         if self.port.bytesAvailable(): self.port.readAll()
         cmd = bytes([0xAA, self.res1, self.res2, 0xFF, 0xFF, 0x55])
         xcmd = cmd.hex(" ")

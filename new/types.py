@@ -85,11 +85,55 @@ class ReferResult:
     
     def dict(self):
         return asdict(self)
+
     
 @dataclass
 class ReferAllResult:
     argument: ReferArgument
     results: list[ReferResult]
+
+Measurement = Literal['Vce', 'Vcb', 'Vbe', 'Ic', 'Ie']
+
+@dataclass
+class ReferTargetResult:
+    target_Vce: float
+    target_Ic: float
+    
+    Vce: float
+    Ic: float
+
+    Vc: float
+    Ve: float
+    Rc: str
+    Re: str
+
+    Vc_delay: float
+    Ve_delay: float
+
+    measurements: dict[Measurement, list[float]]
+
+    def tuple(self): 
+        return [
+            f'{self.target_Vce:.3f}',
+            f'{self.target_Ic:.6f}',
+            f'{self.Vce:.3f}',
+            f'{self.Ic:.6f}',
+            f'{self.Vc:.3f}',
+            f'{self.Ve:.3f}',
+            f'{self.Ve - self.Ic * float(self.Rc.replace("k", "e3"))}',
+            f'{self.Rc}',
+            f'{self.Re}',
+            f'{self.Vc_delay:.3f}',
+            f'{self.Ve_delay:.3f}',
+        ]
+    
+    def dict(self):
+        return asdict(self)
+
+@dataclass
+class ReferResults:
+    argument: ReferArgument
+    results: list[ReferTargetResult]
 
 @dataclass
 class ExecItem:

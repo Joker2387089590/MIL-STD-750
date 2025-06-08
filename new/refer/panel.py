@@ -37,6 +37,9 @@ class ReferPanel(QtWidgets.QWidget):
         ui.btnClear.clicked.connect(self.clear_table)
 
         self.update_running_state(False)
+    
+    def set_disabled(self, disabled: bool):
+        self.setDisabled(disabled)
 
     def _setup_charts(self):
         self.ui.chart.setRenderHint(QtGui.QPainter.RenderHint.Antialiasing, True)
