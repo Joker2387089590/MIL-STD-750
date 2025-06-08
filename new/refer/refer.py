@@ -6,9 +6,9 @@ from PySide6.QtWidgets import (
     QListWidgetItem,
     QMessageBox)
 from ..types import *
-from ..args import ArgumentPanel
 from ..chart import Chart
 from ..table_csv import export_csv
+from .args import ArgumentPanel
 from .refer_ui import Ui_ReferPanel
 
 _log = logging.getLogger(__name__)
