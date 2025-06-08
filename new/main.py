@@ -17,6 +17,9 @@ from .scope import Scope
 from .dmm import plc_to_rate
 from . import global_logger
 
+from .refer.task import ReferRunner
+from .worker.common import Context
+
 _log = logging.getLogger(__name__)
 _config = Path(__file__).with_name('config.json')
 
@@ -27,7 +30,7 @@ def debugger_is_active() -> bool:
 class _Common(Protocol):
     def update_running_state(self, running: bool): ...
     def start_target(self): ...
-    def setDisabled(self, arg__1: bool): ...
+    def set_disabled(self, disabled: bool): ...
     
 class UiHandler(logging.Handler):
     def __init__(self, signal):
@@ -70,7 +73,11 @@ class MainWindow(QtWidgets.QMainWindow):
         self.setWindowTitle('晶体管安全工作区测试平台')
     
         self.io_thread = DebugThread(self)
-        self.context = Worker()
+
+        self.worker = Worker()
+        self.worker.moveToThread(self.io_thread)
+
+        self.context = Context()
         self.context.moveToThread(self.io_thread)
 
         self.tab = QtWidgets.QTabWidget(self)
@@ -92,15 +99,20 @@ class MainWindow(QtWidgets.QMainWindow):
         self.exec.startRequested.connect(self.start_exec)
         self.exec.abortRequested.connect(self.abort)
 
+        self.worker.stateChanged.connect(self.update_running_state)
+        self.worker.targetStarted.connect(self.start_target)
+        self.worker.message.connect(self.message)
+
         self.context.stateChanged.connect(self.update_running_state)
-        self.context.logged.connect(self.logs.appendHtml)
         self.context.targetStarted.connect(self.start_target)
-        self.context.referTested.connect(self.add_refer)
-        self.context.referComplete.connect(self.exec.receive_refer_all_results)
-        self.context.execTested.connect(self.receive_exec)
-        self.context.execComplete.connect(self.exec.receive_exec_all_results)
-        # self.context.plots.connect(self.plot)
         self.context.message.connect(self.message)
+
+        self.worker.referTested.connect(self.add_refer)
+        self.worker.referComplete.connect(self.exec.receive_refer_all_results)
+
+        self.worker.execTested.connect(self.receive_exec)
+        self.worker.execComplete.connect(self.exec.receive_exec_all_results)
+        # self.context.plots.connect(self.plot)
 
         self.common: _Common | None = None
 
@@ -132,7 +144,8 @@ class MainWindow(QtWidgets.QMainWindow):
     def config_logs(self):
         root = logging.getLogger()
         root.setLevel(logging.DEBUG)
-        global_logger.setLevel(logging.INFO)
+        global_logger.setLevel(logging.DEBUG)
+        # global_logger.setLevel(logging.INFO)
 
         console_fmt = logging.Formatter(
             fmt='[{asctime}.{msecs:03.0f}][{levelname}][{module}:{lineno}] {message}',
@@ -184,7 +197,17 @@ class MainWindow(QtWidgets.QMainWindow):
         arg = self.refer.get_arguments()
         dev = self.devices.get_devices()
 
-        def run(): self.context.start(arg, dev)
+        def build_runner(context: Context):
+            runner = ReferRunner(arg, context)
+            runner.referTested.connect(self.add_refer)
+            runner.referComplete.connect(self.exec.receive_refer_results)
+            return runner
+
+        def run():
+            # self.worker.start(arg, dev)
+            self.context.start(arg.type, dev, build_runner)
+            
+        # QTimer.singleShot(0, self.worker, run)
         QTimer.singleShot(0, self.context, run)
 
     def start_exec(self):
@@ -193,8 +216,8 @@ class MainWindow(QtWidgets.QMainWindow):
         arg = self.exec.get_arguments()
         dev = self.devices.get_devices()
 
-        def run(): self.context.start(arg, dev)
-        QTimer.singleShot(0, self.context, run)
+        def run(): self.worker.start(arg, dev)
+        QTimer.singleShot(0, self.worker, run)
 
     def start_target(self):
         if self.common:
@@ -216,6 +239,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.exec.receive_exec_result(exec)
 
     def abort(self):
+        self.worker.abort()
         self.context.abort()
 
     def update_running_state(self, running: bool):
@@ -225,7 +249,7 @@ class MainWindow(QtWidgets.QMainWindow):
                 assert self.common is not None
                 self.common.update_running_state(running)
             else:
-                c.setDisabled(running)
+                c.set_disabled(running)
         self.devices.setDisabled(running)
 
     def message(self, msg):
@@ -261,6 +285,3 @@ def main():
     
     with MainWindow():
         return app.exec()
-
-if __name__ == '__main__':
-    exit(main())

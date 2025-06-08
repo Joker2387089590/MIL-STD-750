@@ -196,7 +196,7 @@
                 "name": "4931-all",
                 "type": "PNP",
                 "duration": 1.0,
-                "stable_duration": 10.0,
+                "stable_duration": 100.0,
                 "Vc_max": 300.0,
                 "Ve_max": 200.0,
                 "Vceo": 200.0,

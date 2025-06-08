@@ -1,0 +1,12 @@
+[build-system]
+requires = ["hatchling >= 1.26"]
+build-backend = "hatchling.build"
+
+[project]
+name = "mil_std_750"
+version = "0.1.0"
+description = "MIL-STD-750 test methods and procedures"
+requires-python = ">=3.13"
+dependencies = [
+    "pyside6", "pyvisa"
+]

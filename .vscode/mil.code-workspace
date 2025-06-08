@@ -15,7 +15,7 @@
                 "module": "new",
                 "guiEventLoop": "qt",
                 "justMyCode": false,
-                "preLaunchTask": "PySide6 UiC"
+                // "preLaunchTask": "PySide6 UiC"
             },
             {
                 "name": "当前文件",
