@@ -110,6 +110,7 @@ class ArgumentPanel(QDialog):
             box.setMinimum(0.0)
             box.setMaximum(400.0)
             box.setSingleStep(0.1)
+            box.setValue(200)
 
         ui.chartView.setRenderHint(QtGui.QPainter.RenderHint.Antialiasing, True)
         ui.chartView.setChart(self.chart)

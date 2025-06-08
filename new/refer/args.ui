@@ -141,18 +141,6 @@
              <pointsize>12</pointsize>
             </font>
            </property>
-           <property name="suffix">
-            <string>V</string>
-           </property>
-           <property name="decimals">
-            <number>2</number>
-           </property>
-           <property name="maximum">
-            <double>350.000000000000000</double>
-           </property>
-           <property name="value">
-            <double>200.000000000000000</double>
-           </property>
           </widget>
          </item>
          <item row="4" column="0">
@@ -168,18 +156,6 @@
             <font>
              <pointsize>12</pointsize>
             </font>
-           </property>
-           <property name="suffix">
-            <string>V</string>
-           </property>
-           <property name="decimals">
-            <number>2</number>
-           </property>
-           <property name="maximum">
-            <double>350.000000000000000</double>
-           </property>
-           <property name="value">
-            <double>200.000000000000000</double>
            </property>
           </widget>
          </item>
@@ -204,18 +180,6 @@
              <pointsize>12</pointsize>
             </font>
            </property>
-           <property name="suffix">
-            <string>V</string>
-           </property>
-           <property name="decimals">
-            <number>2</number>
-           </property>
-           <property name="maximum">
-            <double>350.000000000000000</double>
-           </property>
-           <property name="value">
-            <double>200.000000000000000</double>
-           </property>
           </widget>
          </item>
          <item row="2" column="0">
@@ -232,18 +196,6 @@
              <pointsize>12</pointsize>
             </font>
            </property>
-           <property name="suffix">
-            <string>V</string>
-           </property>
-           <property name="decimals">
-            <number>2</number>
-           </property>
-           <property name="maximum">
-            <double>350.000000000000000</double>
-           </property>
-           <property name="value">
-            <double>200.000000000000000</double>
-           </property>
           </widget>
          </item>
          <item row="1" column="0">
@@ -259,18 +211,6 @@
             <font>
              <pointsize>12</pointsize>
             </font>
-           </property>
-           <property name="suffix">
-            <string>V</string>
-           </property>
-           <property name="decimals">
-            <number>2</number>
-           </property>
-           <property name="maximum">
-            <double>350.000000000000000</double>
-           </property>
-           <property name="value">
-            <double>200.000000000000000</double>
            </property>
           </widget>
          </item>

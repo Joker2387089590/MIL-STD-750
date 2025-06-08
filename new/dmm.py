@@ -1,7 +1,6 @@
-import asyncio, logging, re, time, math
+import asyncio, logging, re, math, typing
 from asyncio import StreamReader, StreamWriter
 from collections import Counter
-import numpy as np
 
 _log = logging.getLogger(__name__)
 
@@ -71,30 +70,23 @@ class _Meter:
 
     async def set_volt_range(self, volt: float):
         texts = ['200mV', '2V', '20V', '200V', '1000V']
-        values = [200e-3, 2, 20, 200, 1000]
-        has_range = False
+        values = [200e-3, 2., 20., 200., 1000.]
         for text, value in zip(texts, values):
             if abs(volt) < value * 0.90:
                 await self.write(f'SENSe:VOLTage:DC:RANGe {text}')
-                has_range = True
-                break
-
-        if not has_range:
-            raise Exception(f'测试电压 {volt}V 超过万用表最大量程')
+                _log.debug(f'[{self.name}] 设置电压量程: {text}')
+                return value
+        raise Exception(f'测试电压 {volt}V 超过万用表最大量程')
         
     async def set_curr_range(self, curr: float):
         texts = ['200uA', '2mA', '20mA', '200mA', '2A', '10A']
-        values = [200e-6, 2e-3, 20e-3, 200e-3, 2, 10]
-
-        has_range = False
+        values = [200e-6, 2e-3, 20e-3, 200e-3, 2., 10.]
         for text, value in zip(texts, values):
             if abs(curr) < value * 0.90:
                 await self.write(f'SENSe:CURRent:DC:RANGe {text}')
-                has_range = True
-                break
-
-        if not has_range:
-            raise Exception('测试电流超过万用表最大量程')
+                _log.debug(f'[{self.name}] 设置电流量程: {text}')
+                return value
+        raise Exception('测试电流超过万用表最大量程')
         
     # async def config_sample(self, plc: str, duration: float = 0.200):
     #     sample = int(plc_to_rate[plc] * duration)
@@ -110,44 +102,6 @@ class _Meter:
         opc = await self.query(b'*OPC?')
         if opc != b'1':
             _log.warning(f'[{self.name}] reconfig opc: {opc}')
-
-    # async def fetch(self):
-    #     try:
-    #         # sample count & data points
-    #         sample = int(await self.query(b'SAMPLe:COUNt?'))
-    #         async with asyncio.timeout(10):
-    #             while True:
-    #                 points = int(await self.query(b'DATA:POINts?'))
-    #                 if points >= sample: break
-
-    #         # fetch
-    #         begin = time.monotonic()
-    #         response = await self.query(b'FETCh?', timeout=10)
-    #         end = time.monotonic()
-    #         elapsed = int((end - begin) * 1000)
-
-    #         if not response.endswith(b'\n'):
-    #             _log.warning(f'[{self.name}] 不完整的响应')
-
-    #         if response == b'NULL':
-    #             raise Exception('仪器未被触发')
-            
-    #         range = float(await self.query(f'{self.func}:RANGe?'))
-            
-    #         values = [float(r) for r in response.split(b',')]
-    #         values = [v for v in values if v < range]
-    #         vcount = len(values)
-    #         if vcount == 0:
-    #             raise Exception('仪器未被触发')
-            
-    #         _log.info(f'[{self.name}][{elapsed}ms] fetch {vcount}')
-    #         return values
-    #     except TimeoutError as e:
-    #         await self.write(b'ABORt')
-    #         ex = e
-    #     except Exception as e:
-    #         ex = e
-    #     return ex
 
     async def acquire(self, event: asyncio.Event | None = None):
         while True:
@@ -169,6 +123,18 @@ class _Meter:
 
             results = [float(d) for d in data.split(b',')]
             yield results
+
+    async def acquire_one(self, parser: typing.Callable[[bytes], float]) -> list[float]:
+        response = await self.query(b'R?')
+        if response == b'NULL': return []
+
+        matches = re.match(_data_points_pattern, response)
+        assert matches, 'R? 响应格式错误'
+
+        count = int(matches[1])
+        data: bytes = matches[2][count + 1:]
+
+        return [parser(d) for d in data.split(b',')]
 
 class MultiMeter:
     def __init__(self):
@@ -209,13 +175,17 @@ class MultiMeter:
                 tg.create_task(meter.reconfig())
 
     async def set_volt_range(self, **volts: float):
+        actual_values: dict[str, float] = {}
         for name, volt in volts.items():
-            await self[name].set_volt_range(volt)
-
-    async def set_curr_range(self, **currs: float):
-        for name, curr in currs.items():
-            await self[name].set_curr_range(curr)
+            actual_values[name] = await self[name].set_volt_range(volt)
+        return actual_values
     
+    async def set_curr_range(self, **currs: float):
+        actual_values: dict[str, float] = {}
+        for name, curr in currs.items():
+            actual_values[name] = await self[name].set_curr_range(curr)
+        return actual_values
+
     async def auto_sample(self, total_duration: float, plc: str = '0.1'):
         rate = plc_to_rate[plc]
         total_sample = int(rate * total_duration)
