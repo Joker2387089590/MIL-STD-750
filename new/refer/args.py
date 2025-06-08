@@ -18,7 +18,7 @@ class Target(QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
 
         self.Vce = QtWidgets.QDoubleSpinBox(self)
-        self.Vce.setRange(0, 300)
+        self.Vce.setRange(0, 350)
         self.Vce.editingFinished.connect(self.changed)
         layout.addWidget(self.Vce, 1)
 
@@ -89,6 +89,28 @@ class ArgumentPanel(QDialog):
         self.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose, True)
         ui.setupUi(self)
 
+        ui.duration.setSuffix(' s')
+        ui.duration.setDecimals(3)
+        ui.duration.setMinimum(0.350)
+        ui.duration.setMaximum(100)
+        ui.duration.setSingleStep(0.100)
+        ui.duration.setValue(1)
+
+        ui.stableTime.setSuffix(' s')
+        ui.stableTime.setDecimals(3)
+        ui.stableTime.setMinimum(0.350)
+        ui.stableTime.setMaximum(100)
+        ui.stableTime.setSingleStep(0.100)
+        ui.stableTime.setValue(10)
+
+        volt_limit_boxes = [ui.maxVc, ui.maxVe, ui.Vceo, ui.Vebo, ui.Vcbo]
+        for box in volt_limit_boxes:
+            box.setSuffix(' V')
+            box.setDecimals(2)
+            box.setMinimum(0.0)
+            box.setMaximum(400.0)
+            box.setSingleStep(0.1)
+
         ui.chartView.setRenderHint(QtGui.QPainter.RenderHint.Antialiasing, True)
         ui.chartView.setChart(self.chart)
         ui.btnAdd.clicked.connect(self.add_target)
@@ -110,7 +132,7 @@ class ArgumentPanel(QDialog):
 
     def get_targets(self):
         targets: list[ReferTarget] = []
-        for target in self.targets: 
+        for target in self.targets:
             targets.append(target.save())
         _log.debug(f'{targets = }')
         return targets

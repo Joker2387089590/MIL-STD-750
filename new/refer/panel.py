@@ -9,7 +9,7 @@ from ..types import *
 from ..chart import Chart
 from ..table_csv import export_csv
 from .args import ArgumentPanel
-from .refer_ui import Ui_ReferPanel
+from .panel_ui import Ui_ReferPanel
 
 _log = logging.getLogger(__name__)
 
@@ -67,7 +67,7 @@ class ReferPanel(QtWidgets.QWidget):
         self.ui.listArgs.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self.ui.listArgs.customContextMenuRequested.connect(self._show_context_menu)
 
-    def eventFilter(self, watched, event):
+    def eventFilter(self, watched, event: QEvent) -> bool:
         if watched is self.ui.chart and event.type() == QEvent.Type.Resize:
             assert isinstance(event, QtGui.QResizeEvent)
             size = self.ui.chart.maximumViewportSize()
