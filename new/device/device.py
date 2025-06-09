@@ -1,5 +1,5 @@
 from PySide6 import QtWidgets
-from PySide6.QtCore import Signal, Qt
+from PySide6.QtCore import Signal, Qt, Slot
 from PySide6.QtSerialPort import QSerialPortInfo
 from ..types import Devices
 from .device_ui import Ui_DevicePanel
@@ -70,6 +70,7 @@ class DevicePanel(QtWidgets.QScrollArea):
             power1 = self.devices['Power1'].text(),
             power2 = self.devices['Power2'].text(),
             resist = self.ui.resist.currentText(),
+            fake = self.ui.fake_device.isChecked(),
         )
 
     def save(self):

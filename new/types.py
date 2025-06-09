@@ -7,6 +7,7 @@ class Devices:
     power1: str
     power2: str
     resist: str
+    fake: bool = False
 
 @dataclass
 class ReferTarget:

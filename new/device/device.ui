@@ -2,14 +2,6 @@
 <ui version="4.0">
  <class>DevicePanel</class>
  <widget class="QWidget" name="DevicePanel">
-  <property name="geometry">
-   <rect>
-    <x>0</x>
-    <y>0</y>
-    <width>211</width>
-    <height>138</height>
-   </rect>
-  </property>
   <layout class="QVBoxLayout" name="verticalLayout">
    <item>
     <layout class="QGridLayout" name="grid">
@@ -106,6 +98,13 @@
       </widget>
      </item>
     </layout>
+   </item>
+   <item>
+    <widget class="QCheckBox" name="fake_device">
+     <property name="text">
+      <string>虚拟仪器</string>
+     </property>
+    </widget>
    </item>
    <item>
     <spacer name="verticalSpacer">

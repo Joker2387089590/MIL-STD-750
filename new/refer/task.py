@@ -1,8 +1,9 @@
-import logging, asyncio, math
+import logging, asyncio, random
 import numpy as np
+import matplotlib.pyplot as plt
 from PySide6.QtCore import QObject, Signal
 from ..types import ReferArgument, ReferTarget, ReferTargetResult, ReferResults, Measurement
-from ..worker.common import TargetArgument, EventPoint, DeviceWorker, Context, _fake
+from ..worker.common import TargetArgument, EventPoint, DeviceWorker, Context
 from ..resist import ohm_to_float
 
 _log = logging.getLogger(__name__)
@@ -93,7 +94,7 @@ class Search:
                     break
             xresult = await self.try_with(Vc, Ve)
             Vce, Ic = xresult.Vce, xresult.Ic
-            if Ic > self.targ.Ic: raise Exception('Ic 过大，样片可能已故障')
+            if not self.device.fake and Ic > self.targ.Ic: raise Exception('Ic 过大，样片可能已故障')
 
         # 6V 步进匹配 (Vce, 0)
         while True:
@@ -106,7 +107,7 @@ class Search:
                     break
             xresult = await self.try_with(Vc, Ve)
             Vce, Ic = xresult.Vce, xresult.Ic
-            if Ic > target.Ic: raise Exception('Ic 过大，样片可能已故障')
+            if not self.device.fake and  Ic > target.Ic: raise Exception('Ic 过大，样片可能已故障')
 
         # 1V 步进匹配 (Vce, 0)
         while True:
@@ -119,7 +120,7 @@ class Search:
                     break
             xresult = await self.try_with(Vc, Ve)
             Vce, Ic = xresult.Vce, xresult.Ic
-            if Ic > self.targ.Ic: raise Exception('Ic 过大，样片可能已故障')
+            if not self.device.fake and  Ic > self.targ.Ic: raise Exception('Ic 过大，样片可能已故障')
 
         Vce_hint = abs(Vce)
         _log.info(f'[search] {Vc = :.2f}, {Vce_hint = :.2f}, {Vce = :.2f}, {Ic = :.2f}')
@@ -199,7 +200,8 @@ class Search:
                 tg.create_task(self.total_timeout(events), name='total_timeout')
 
             b, e = self.mapping(events.ve_stop, events), self.mapping(events.output_stop, events)
-            assert b < e
+            assert b < e, f'采集数据范围错误: {b} >= {e}'
+
             xresults = ReferTargetResult(
                 target_Vce=self.targ.Vce,
                 target_Ic=self.targ.Ic,
@@ -231,15 +233,33 @@ class Search:
             raise Exception('电路建立稳态的时间过长') from e
         
     async def acquire_all(self, results: dict[Measurement, list[float]], events: EventPoint):
-        print(id(events))
         while True:
-            measurements = await self.device.acquire(self._limits, events.Vc)
-            self.runner.context.check_abort()
+            if not self.device.fake:
+                measurements = await self.device.acquire(self._limits)
+                self.runner.context.check_abort()
+                for meas, values in measurements.items():
+                    results[meas].extend(values)
+            else:
+                await asyncio.sleep(0.100)  # 模拟采样间隔
+                samplecount = int(self._rate * 0.099)
+                self.runner.context.check_abort()
 
-            for meas, values in measurements.items():
-                results[meas].extend(values)
+                if events.state == 'start':
+                    for meas, values in results.items():
+                        values.clear()
+                else:
+                    for meas, values in results.items():
+                        if meas == 'Ic' or meas == 'Ie':
+                            expect = events.Ve / self.Rc
+                            values.extend(random.gauss(expect, expect * 0.05) for _ in range(samplecount))
+                        else:
+                            expect = events.Vc - events.Ve
+                            expect = expect if self.runner.arg.type == 'NPN' else -expect
+                            expects = [random.gauss(expect, abs(expect * 0.001)) for _ in range(samplecount)]
+                            # expects.sort()
+                            values.extend(expects)
 
-            if events.output.is_set(): break
+            if events.output.is_set(): return
 
             self.check_vce(results['Vce'], events)
             self.check_ic(results['Ic'], events)
@@ -252,22 +272,16 @@ class Search:
         return values[-sample:]
     
     def check_vce(self, values: list[float], events: EventPoint):
-        # 采样最新的 100ms 数据
+        # 采样最新的 100ms 数据, 检查是否满足 Vceo
         duration = 0.100
         last = self.sample_of_last(values, duration)
-        if last is not None:
+        if not self.device.fake and last is not None:
             vce = np.average(last)
             if abs(vce) > self.targ.Vceo:
                 raise Exception(f'Vce {vce} 超出 Vceo 限值 {self.targ.Vceo}')
 
         match events.state:
             case 'vc':
-                if _fake:
-                    _log.info(f'[Vce] 进入稳定状态 (fake)')
-                    events.vc.set()
-                    events.state = 've'
-                    return
-
                 # 采样最新的 200ms 数据
                 duration = 0.200
                 last = self.sample_of_last(values, duration)
@@ -281,67 +295,58 @@ class Search:
                 # 检查斜率 k 是否在允许范围内, 此处假设变化率不超过 5%
                 tolerance = 0.05 * abs(events.Vc / self.targ.output_time)
                 if abs(k) > tolerance:
-                    _log.debug(f'[Vce] 尚未稳定: 斜率 {k} 大于 {tolerance}')
+                    _log.debug(f'[Vce] Vc 输出尚未稳定: 斜率 {k} 大于 {tolerance}')
                     return
 
                 # 检查 Vce 偏差是否在允许范围内
                 bias = abs(abs(np.average(last)) - events.Vc)
                 range = events.Vc * 0.10 + 1.0 # 10% 的偏差范围加上 1V 的容错
                 if bias > range:
-                    _log.debug(f'[Vce] 尚未稳定: 偏差 {bias} 大于阈值 {range}')
+                    _log.debug(f'[Vce] Vc 输出尚未稳定: 偏差 {bias} 大于阈值 {range}')
                     return
                 
-                _log.info(f'[Vce] 进入稳定状态, 斜率 {k}, 偏差 {bias}')
+                _log.info(f'[Vce] Vc 输出进入稳定状态, 斜率 {k}, 偏差 {bias}')
                 events.vc.set()
-                events.state = 've'
 
             case 've':
-                if last is None: return
+                if events.ve_vce.is_set():
+                    return
                 
-                if not _fake:
-                    # 线性拟合采样数据
-                    times = np.linspace(0, duration, len(last))
-                    co = np.polyfit(np.array(times), np.array(last), 1)
-                    k, b = float(co[0]), float(co[1])
+                if last is None: 
+                    _log.debug('[Vce] 尚未采集到足够的数据')
+                    return
+                
+                # 线性拟合采样数据
+                times = np.linspace(0, duration, len(last))
+                co = np.polyfit(np.array(times), np.array(last), 1)
+                k, b = float(co[0]), float(co[1])
 
-                    # 检查斜率 k 是否在允许范围内, 此处假设变化率不超过 10%
-                    tolerance = 0.10 * abs(self.targ.Vce / self.targ.output_time)
-                    if abs(k) > tolerance:
-                        _log.debug(f'[Vce] 尚未稳定: 斜率 {k} 大于 {tolerance}')
-                        return
+                # 检查斜率 k 是否在允许范围内, 此处假设变化率不超过 10%
+                tolerance = 0.10 * abs(self.targ.Vce / self.targ.output_time)
+                if not self.device.fake and abs(k) > tolerance:
+                    _log.debug(f'[Vce] Ve 输出尚未稳定: 斜率 {k} 大于 {tolerance}')
+                    return
+                
+                bias = abs(np.average(last) - events.Vc)
+                _log.info(f'[Vce] Ve 输出进入稳定状态, 斜率 {k}, 偏差 {bias}')
 
                 # 用测试点数计算 Ve 停止采集的时间，排除最后 100ms
                 prev = len(values) - len(last)
-                events.ve_stop = events.start + prev / self._rate
-
-                bias = abs(np.average(last) - events.Vc)
-                _log.info(f'[Vce] 进入稳定状态, 斜率 {k}, 偏差 {bias}')
+                events.ve_vce_stop = events.start + prev / self._rate
                 events.ve_vce.set()
-
-    def check_vcb(self, values: list[float]):
-        if last := self.sample_of_last(values, 0.100):
-            avg = np.average(last)
-            if abs(avg) > self.targ.Vcbo:
-                raise Exception(f'Vcb {avg} 超出 Vcbo 限值 {self.targ.Vcbo}')
-            
-    def check_veb(self, values: list[float]):
-        if last := self.sample_of_last(values, 0.100):
-            avg = np.average(last)
-            if abs(avg) > self.targ.Vebo:
-                raise Exception(f'Veb {avg} 超出 Vebo 限值 {self.targ.Vebo}')
             
     def check_ic(self, values: list[float], events: EventPoint):
         match events.state:
             case 've':
-                if _fake:
-                    _log.info(f'[Ic] 进入稳定状态 (fake)')
-                    events.ve_ic.set()
+                if events.ve_ic.is_set():
                     return
                 
                 # 采样最新的 200ms 数据
                 duration = 0.200
                 last = self.sample_of_last(values, duration)
-                if last is None: return
+                if last is None: 
+                    _log.debug('[Ic] 尚未采集到足够的数据')
+                    return
                 
                 # 线性拟合采样数据
                 times = np.linspace(0, duration, len(last))
@@ -350,13 +355,31 @@ class Search:
 
                 # 检查斜率 k 是否在允许范围内, 此处假设变化率不超过 5%
                 tolerance = 0.05 * abs(self.targ.Ic / self.targ.output_time)
-                if abs(k) > tolerance:
+                if not self.device.fake and abs(k) > tolerance:
                     _log.debug(f'[Ic] 尚未稳定: 斜率 {k} 大于 {tolerance}')
                     return
                 
                 bias = abs(np.average(last) - self.targ.Ic)
                 _log.info(f'[Ic] 进入稳定状态, 斜率 {k}, 偏差 {bias}')
+                
+                # 用测试点数计算 Ve 停止采集的时间，排除最后 100ms
+                prev = len(values) - len(last)
+                events.ve_ic_stop = events.start + prev / self._rate
                 events.ve_ic.set()
+
+    def check_vcb(self, values: list[float]):
+        if self.device.fake: return
+        if last := self.sample_of_last(values, 0.100):
+            avg = np.average(last)
+            if abs(avg) > self.targ.Vcbo:
+                raise Exception(f'Vcb {avg} 超出 Vcbo 限值 {self.targ.Vcbo}')
+            
+    def check_veb(self, values: list[float]):
+        if self.device.fake: return
+        if last := self.sample_of_last(values, 0.100):
+            avg = np.average(last)
+            if abs(avg) > self.targ.Vebo:
+                raise Exception(f'Veb {avg} 超出 Vebo 限值 {self.targ.Vebo}')
     
     def mapping(self, time: float, events: EventPoint):
         return int((time - events.start) * self._rate)

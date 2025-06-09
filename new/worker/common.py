@@ -10,8 +10,6 @@ from ..resist import Resist
 
 _log = logging.getLogger(__name__)
 
-_fake = True # 是否使用虚拟设备
-
 @dataclass
 class TargetArgument:
     Vce: float
@@ -32,7 +30,7 @@ class EventPoint:
     def __init__(self, Vc: float, Ve: float):
         self.Vc = Vc
         self.Ve = Ve
-        self.state: typing.Literal['vc', 've', 'output'] = 'vc'
+        self.state: typing.Literal['start', 'vc', 've', 'output'] = 'start'
 
         self.vc = asyncio.Event()
         self.ve_vce = asyncio.Event()
@@ -41,14 +39,26 @@ class EventPoint:
 
         self.start: float = math.nan
         self.ve_start: float = math.nan
-        self.ve_stop: float = math.nan
+        self.ve_vce_stop: float = math.nan
+        self.ve_ic_stop: float = math.nan
         self.output_stop: float = math.nan
+
+    @property
+    def ve_stop(self) -> float:
+        stop = max(self.ve_vce_stop, self.ve_ic_stop)
+        if math.isnan(stop):
+            assert not math.isnan(stop), 've_stop 未设置'
+        return stop
 
 class DeviceWorker:
     def __init__(self, dev: Devices, type: str):
         self.type = type
         self._dev_info = dev
         self._disconnects: AsyncExitStack | None = None
+
+    @property
+    def fake(self) -> bool:
+        return self._dev_info.fake
 
     @property
     def powerVc(self):
@@ -81,17 +91,19 @@ class DeviceWorker:
     async def __aenter__(self):
         _log.info('正在连接仪器...')
         async with AsyncExitStack() as stack:
-            self._dmms = MultiMeter(_fake)
+            fake = self._dev_info.fake
+
+            self._dmms = MultiMeter(fake)
             await self._dmms.connects(self._dev_info.dmms)
             stack.push_async_callback(self._dmms.disconnects)
 
-            self.Power1 = PowerCV(self._dev_info.power1, _fake)
+            self.Power1 = PowerCV(self._dev_info.power1, fake)
             stack.callback(self.Power1.disconnects)
 
-            self.Power2 = PowerCV(self._dev_info.power2, _fake)
+            self.Power2 = PowerCV(self._dev_info.power2, fake)
             stack.callback(self.Power2.disconnects)
 
-            self.R = Resist(self._dev_info.resist, _fake)
+            self.R = Resist(self._dev_info.resist, fake)
             stack.callback(self.R.disconnects)
 
             await self.reconfig()
@@ -126,32 +138,35 @@ class DeviceWorker:
             power.set_limit_current(current)
     
     async def power_control(self, events: EventPoint, common: TargetArgument):
-        await asyncio.sleep(4.000) # 每次施加电压前等待样品冷却
+        if not self.fake:
+            await asyncio.sleep(4.000) # 每次施加电压前等待样品冷却
 
         for power in [self.powerVc, self.powerVe]:
             power.set_voltage(0)
 
         with self.powerVc, self.powerVe:
             events.start = time.monotonic()
-
+            
             _log.info('[power] 开始输出 Vc, 等待 Vce 稳定...')
             self.set_power_current_limits(common.Ic * 5)
             self.powerVc.set_voltage(events.Vc)
+
+            events.state = 'vc'
             await events.vc.wait()
 
             _log.info('[power] 开始输出 Ve, 等待 Vce 和 Ic 稳定...')
             self.set_power_current_limits(common.Ic * 2.2)
             self.powerVe.set_voltage(events.Ve)
             events.ve_start = time.monotonic()
+            events.state = 've'
             await events.ve_vce.wait()
             await events.ve_ic.wait()
-            events.state = 'output'
-
             ve_duration = events.ve_stop - events.ve_start
             _log.info(f'[power] 从 Ve 开始输出到 Vce 和 Ic 稳定耗时 {ve_duration:.3f}s')
 
             _log.info(f'[power] 采集{common.output_time:.3f}秒数据...')
             self.set_power_current_limits(common.Ic * 1.3)
+            events.state = 'output'
             await asyncio.sleep(common.output_time)
             events.output.set()
             events.output_stop = time.monotonic()
@@ -176,12 +191,7 @@ class DeviceWorker:
         })
         return rate, { **volts, **currs }
 
-    async def acquire(self, limits: dict[str, float], expect_vce: typing.Optional[float] = None) -> dict[Measurement, list[float]]:
-        if expect_vce is not None and math.isnan(expect_vce):
-            import traceback
-            traceback.print_stack()
-            assert False
-
+    async def acquire(self, limits: dict[str, float]) -> dict[Measurement, list[float]]:
         results: dict[Measurement, asyncio.Task[list[float]]] = {}
         async with asyncio.TaskGroup() as tg:
             meas_keys: list[Measurement] = ['Vce', 'Ic', 'Vbe', 'Vcb', 'Ie']
@@ -193,7 +203,7 @@ class DeviceWorker:
                     if abs(value) > limit:
                         raise Exception(f'[{meas}] 测量值 {value} 超出限制 {limit}, 可能是测量错误')
                     return value
-                results[meas] = tg.create_task(self._dmms[dmm].acquire_one(parse, expect=expect_vce))
+                results[meas] = tg.create_task(self._dmms[dmm].acquire_one(parse))
         return { meas: result.result() for meas, result in results.items() }
 
 class Cancellation(Exception):

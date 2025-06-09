@@ -1,4 +1,4 @@
-import asyncio, logging, re, math, typing, random
+import asyncio, logging, re, math, typing
 from asyncio import StreamReader, StreamWriter
 from collections import Counter
 
@@ -129,11 +129,7 @@ class _Meter:
             results = [float(d) for d in data.split(b',')]
             yield results
 
-    async def acquire_one(self, parser: typing.Callable[[bytes], float], expect: typing.Optional[float] = None) -> list[float]:
-        if self._fake: 
-            await asyncio.sleep(0.100)
-            return [random.gauss(expect or 0, 1) for _ in range(100)]
-
+    async def acquire_one(self, parser: typing.Callable[[bytes], float]) -> list[float]:
         response = await self.query(b'R?')
         if response == b'NULL': return []
 

@@ -136,7 +136,6 @@ class Worker(QObject):
     stateChanged = Signal(bool)
     targetStarted = Signal(float, float) # target Vce, target Ic
     message = Signal(str)
-    logged = Signal(str)
     plots = Signal(list, str, str)
 
     # refer
@@ -176,10 +175,11 @@ class Worker(QObject):
 
     def setup_devices(self, dev: Devices):
         _log.info('正在连接仪器...')
+        self._dmms._fake = dev.fake
         self._async(self._dmms.connects(dev.dmms))
-        self.Power1 = PowerCV(dev.power1)
-        self.Power2 = PowerCV(dev.power2)
-        self.R = Resist(dev.resist)
+        self.Power1 = PowerCV(dev.power1, dev.fake)
+        self.Power2 = PowerCV(dev.power2, dev.fake)
+        self.R = Resist(dev.resist, dev.fake)
 
     def disconnect_devices(self):
         _log.info('正在断开仪器...')
@@ -235,9 +235,9 @@ class Worker(QObject):
                 stack.enter_context(self.Power2.remote())
 
                 if isinstance(arg, ReferArgument):
-                    self.run_refer(arg)
+                    self._async(self.run_refer(arg))
                 elif isinstance(arg, ExecArgument):
-                    self.run_exec(arg)
+                    self._async(self.run_exec(arg))
                 else:
                     raise Exception(f'参数错误: {arg}')
         except Cancellation:
@@ -317,7 +317,7 @@ class Worker(QObject):
                     co = np.polyfit(np.array(times), np.array(last), 1)
                     k, b = float(co[0]), float(co[1])
 
-                    hint = abs(events.common.Vc * 0.05 / events.common.output_time)
+                    hint = abs(0.05 * events.common.Vc / events.common.output_time)
                     _log.info(f'[refer] vc acquire: Vc = {events.common.Vc}, {hint = }V/s, {k = :.3f}, {b = :.3f}')
                     _vc_hint = events.common.Vc
                     no_bias = abs(b - _vc_hint) < _vc_hint * 0.10 + 1
@@ -433,15 +433,15 @@ class Worker(QObject):
 
         return self._async(_test(events))
 
-    def run_refer(self, arg: ReferArgument):
+    async def run_refer(self, arg: ReferArgument):
         all_results = ReferAllResult(arg, [])
         if arg.type == 'NPN':
             for target in arg.targets:
-                item = self.search_npn(arg, target)
+                item = await self.search_npn(arg, target)
                 all_results.results.append(item)
         else:
             for target in arg.targets:
-                item = self.search_pnp(arg, target)
+                item = await self.search_pnp(arg, target)
                 all_results.results.append(item)
         self.referComplete.emit(all_results)
         self.message.emit('测试成功，请在数据表查看数据，在持续测试界面进一步测试')
@@ -452,8 +452,20 @@ class Worker(QObject):
             case 'NPN': return self.R.set_resists(Re, Rc)
             case 'PNP': return self.R.set_resists(Rc, Re)
             case t: assert False, f'无效的晶体管类型({t})'
+    
+    async def setup_dmm_ranges(self, arg: ReferArgument, target: ReferTarget):
+        volts = {
+            'DMM1': arg.Vceo,
+            self.Vbe: arg.Vebo,
+            self.Vcb: arg.Vcbo,
+        }
+        await self._dmms.set_volt_range(**volts)
+        await self._dmms.set_curr_range(
+            DMM4=target.Ic,
+            DMM5=target.Ic,
+        )
 
-    def search_npn(self, arg: ReferArgument, target: ReferTarget):
+    async def search_npn(self, arg: ReferArgument, target: ReferTarget):
         target_Vce = target.Vce
         target_Ic = target.Ic
 
@@ -461,15 +473,15 @@ class Worker(QObject):
 
         self.set_resist(target.Rc, target.Re)
 
-        self._async(self._dmms.set_volt_range(
+        await self._dmms.set_volt_range(
             DMM1=target_Vce,
             DMM2=target_Vce,
             DMM3=target_Vce,
-        ))
-        self._async(self._dmms.set_curr_range(
+        )
+        await self._dmms.set_curr_range(
             DMM4=target_Ic,
             DMM5=target_Ic,
-        ))
+        )
 
         self.counter = 0
         def _test(Vc: float, Ve: float):
@@ -498,7 +510,7 @@ class Worker(QObject):
             return xresult
         return self.search(target_Vce, target_Ic, ohm_to_float(target.Rc), _test)
 
-    def search_pnp(self, arg: ReferArgument, target: ReferTarget):
+    async def search_pnp(self, arg: ReferArgument, target: ReferTarget):
         target_Vce = -target.Vce
         target_Ic = target.Ic
 
@@ -508,15 +520,15 @@ class Worker(QObject):
         Rc, Re = self.R.set_resists(target.Rc, target.Re)
         _log.info(f'{Req = }, {Rc = }, {Re = }')
 
-        self._async(self._dmms.set_volt_range(
+        await self._dmms.set_volt_range(
             DMM1=abs(target_Vce),
             DMM2=abs(target_Vce),
             DMM3=abs(target_Vce),
-        ))
-        self._async(self._dmms.set_curr_range(
+        )
+        await self._dmms.set_curr_range(
             DMM4=target_Ic,
             DMM5=target_Ic,
-        ))
+        )
 
         self.counter = 0
         def _test(Vc: float, Ve: float):
@@ -604,8 +616,6 @@ class Worker(QObject):
             Vce_hint = Vce
 
             # 匹配 (Vce, 0) => (Vce, Ic)
-            Ves = []
-            Ics = []
             Ve = Ve_hint * 0.6
             Vc = Ve + abs(Vce_hint)
             adjust = Ve_hint * 0.1
@@ -655,7 +665,7 @@ class Worker(QObject):
         finally:
             pass
 
-    def run_exec(self, arg: ExecArgument):
+    async def run_exec(self, arg: ExecArgument):
         all_results = ExecAllResult([])
         for item in arg.items:
             result = self._async(self.exec(arg, item))
@@ -796,7 +806,3 @@ class Worker(QObject):
             )
         finally:
             if fp is not None: fp.cancel()
-
-class ReferWorker(Worker):
-    def __init__(self, parent: QObject | None = None) -> None:
-        super().__init__(parent)
