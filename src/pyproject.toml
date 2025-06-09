@@ -8,5 +8,16 @@ version = "1.1.0"
 description = "MIL-STD-750 test methods and procedures"
 requires-python = ">=3.12"
 dependencies = [
-    "pyside6", "pyvisa"
+    "pyside6", "pyvisa", "matplotlib", "numpy", "debugpy"
+]
+
+[tool.hatch.build.targets.sdist]
+artifacts = [
+    "*_ui.py"
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/mil_std_750"]
+artifacts = [
+    "*_ui.py"
 ]
