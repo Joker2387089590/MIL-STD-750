@@ -5,3 +5,5 @@ build/
 all.log
 logs/
 log/
+dist
+config.json

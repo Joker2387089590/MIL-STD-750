@@ -12,7 +12,7 @@
                 "name": "main",
                 "type": "debugpy",
                 "request": "launch",
-                "module": "new",
+                "module": "src.mil_std_750",
                 "guiEventLoop": "qt",
                 "justMyCode": false,
                 // "preLaunchTask": "PySide6 UiC"
@@ -32,6 +32,23 @@
                 "type": "shell",
                 "label": "PySide6 UiC",
                 "command": "${workspaceFolder:base}/.vscode/uic.ps1",
+                "options": {
+                    "cwd": "${workspaceFolder:base}"
+                },
+                "presentation": {
+                    "echo": true,
+                    "reveal": "always",
+                    "focus": false,
+                    "panel": "shared",
+                    "showReuseMessage": true,
+                    "clear": false
+                },
+                "problemMatcher": []
+            },
+            {
+                "type": "shell",
+                "label": "Build wheel",
+                "command": "${workspaceFolder:base}/.vscode/build.ps1",
                 "options": {
                     "cwd": "${workspaceFolder:base}"
                 },
