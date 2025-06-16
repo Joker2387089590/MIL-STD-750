@@ -15,9 +15,11 @@ dependencies = [
 artifacts = [
     "*_ui.py"
 ]
+include = [
+    "src"
+]
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/mil_std_750"]
 artifacts = [
     "*_ui.py"
 ]

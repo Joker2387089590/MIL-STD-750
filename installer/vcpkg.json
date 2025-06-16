@@ -1,0 +1,6 @@
+{
+    "name": "mil",
+    "dependencies": [
+        "fmt"
+    ]
+}
