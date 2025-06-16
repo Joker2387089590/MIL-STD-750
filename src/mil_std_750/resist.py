@@ -2,7 +2,7 @@ import time, math, logging
 from PySide6.QtCore import QObject
 from PySide6.QtSerialPort import QSerialPort, QSerialPortInfo
 
-log = logging.getLogger(__name__)
+_log = logging.getLogger(__name__)
 
 def ohm_to_float(ohm: str):
     return float(ohm.replace('k', 'e3'))
@@ -60,13 +60,13 @@ class Resist(QObject):
         if self.port.bytesAvailable(): self.port.readAll()
         cmd = bytes([0xAA, self.res1, self.res2, 0xFF, 0xFF, 0x55])
         xcmd = cmd.hex(" ")
-        log.debug(f'try apply: {xcmd}')
+        _log.debug(f'try apply: {xcmd}')
         for _ in range(3):
             self.port.write(cmd)
             if self.port.waitForReadyRead(1000):
                 response = self.port.readAll()
                 if not response.contains(cmd):
-                    log.warning(f'回复不匹配: {response}')
+                    _log.warning(f'回复不匹配: {response}')
                 return True
             time.sleep(0.200)
         return False
@@ -75,20 +75,20 @@ class Resist(QObject):
         self.res1 = self.res2 = 0xFF
         success = self._apply()
         if not success: raise Exception('重置电阻箱失败')
-        log.info('重置电阻箱')
+        _log.info('重置电阻箱')
 
     def set_resist1(self, res1: float | str):
         value, self.res1 = _resist_bit(res1)
         if not self._apply():
             raise Exception(f'设置通道一为 {value} 失败')
-        log.info(f'设置通道一为 {value}')
+        _log.info(f'设置通道一为 {value}')
         return value
 
     def set_resist2(self, res2: float | str):
         value, self.res2 = _resist_bit(res2)
         if not self._apply():
             raise Exception(f'设置通道二为 {value} 失败')
-        log.info(f'设置通道二为 {value}')
+        _log.info(f'设置通道二为 {value}')
         return value
 
     def set_resists(self, res1: float | str, res2: float | str):
@@ -98,6 +98,6 @@ class Resist(QObject):
         self.res2 = bits2
         if not self._apply():
             raise Exception(f'设置通道一为 {value1}，通道二为 {value2} 失败')
-        log.info(f'设置电阻箱通道一为 {value1}')
-        log.info(f'设置电阻箱通道二为 {value2}')
+        _log.info(f'设置电阻箱通道一为 {value1}')
+        _log.info(f'设置电阻箱通道二为 {value2}')
         return value1, value2

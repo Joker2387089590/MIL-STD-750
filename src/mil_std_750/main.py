@@ -20,8 +20,10 @@ from . import global_logger
 from .refer.task import ReferRunner
 from .worker.common import Context
 
+_config_dir = Path.home() / '.mil-std-750'
+
 _log = logging.getLogger(__name__)
-_config = Path(__file__).with_name('config.json')
+_config = _config_dir / 'config.json'
 
 def debugger_is_active() -> bool:
     """Return if the debugger is currently active"""
@@ -163,7 +165,7 @@ class MainWindow(QtWidgets.QMainWindow):
         handler_err.setLevel(logging.ERROR)
 
         dnow = datetime.now()
-        _log_dir = Path(__file__).parent.with_name('logs')
+        _log_dir = _config_dir / 'logs'
         folder = _log_dir / f'{dnow:%Y-%m}'
         folder.mkdir(parents=True, exist_ok=True)
         file = RotatingFileHandler(filename=folder / f'{dnow:%Y%m%d}.log', encoding='utf-8')
